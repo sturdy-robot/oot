@@ -130,80 +130,59 @@ f_Quad = "{{ {{ {{ {0}f, {1}f, {2}f }}, {{ {3}f, {4}f, {5}f }}, {{ {6}f, {7}f, {
 
 def GetATflags(at):
     for i, flag in enumerate(ATFLAGS_ENUM):
-        if(i == 0):
-            if(at & (1 << i)):
-                output = "AT_ON"
-            else:
-                output = "AT_NONE"
-        elif(at & (1 << i)):
-            output += " | " + flag
+        if (i == 0):
+            output = "AT_ON" if (at & (1 << i)) else "AT_NONE"
+        elif (at & (1 << i)):
+            output += f" | {flag}"
     return output.replace("AT_TYPE_PLAYER | AT_TYPE_ENEMY | AT_TYPE_OTHER","AT_TYPE_ALL")
 
 def GetACflags(at):
     for i, flag in enumerate(ACFLAGS_ENUM):
-        if(i == 0):
-            if(at & (1 << i)):
-                output = "AC_ON"
-            else:
-                output = "AC_NONE"
-        elif(at & (1 << i)):
-            output += " | " + flag
+        if (i == 0):
+            output = "AC_ON" if (at & (1 << i)) else "AC_NONE"
+        elif (at & (1 << i)):
+            output += f" | {flag}"
     return output.replace("AC_TYPE_OTHER | AC_TYPE_ENEMY | AC_TYPE_PLAYER","AC_TYPE_ALL")
 
 def GetOCflags(at):
     for i, flag in enumerate(OCFLAGS_ENUM):
-        if(i == 0):
-            if(at & (1 << i)):
-                output = "OC1_ON"
-            else:
-                output = "OC1_NONE"
-        elif(at & (1 << i)):
-            output += " | " + flag
+        if (i == 0):
+            output = "OC1_ON" if (at & (1 << i)) else "OC1_NONE"
+        elif (at & (1 << i)):
+            output += f" | {flag}"
     return output.replace("OC1_TYPE_PLAYER | OC1_TYPE_1 | OC1_TYPE_2","OC1_TYPE_ALL")
 
 def GetOCtype(at):
     output = ""
     for i, flag in enumerate(OCTYPE_ENUM):
-        if(at & (1 << i)):
-            output = " | " + flag + output
-    if(output == ""):
-        return "OC2_NONE"
-    else:
-        return output.strip(" | ")
+        if (at & (1 << i)):
+            output = f" | {flag}{output}"
+    return "OC2_NONE" if (output == "") else output.strip(" | ")
 
 def GetToucherFlags(at):
     for i, flag in enumerate(TOUCHERFLAGS_ENUM):
-        if(i == 0):
-            if(at & (1 << i)):
-                output = "TOUCH_ON"
-            else:
-                output = "TOUCH_NONE"
-        elif(at & (1 << i)):
-            output += " | " + flag
+        if (i == 0):
+            output = "TOUCH_ON" if (at & (1 << i)) else "TOUCH_NONE"
+        elif (at & (1 << i)):
+            output += f" | {flag}"
         if(i == 4 and output.find("SFX") == -1 and output.find("OFF") == -1):
             output += " | TOUCH_SFX_NORMAL"
     return output.replace("TOUCH_SFX_HARD | TOUCH_SFX_WOOD", "TOUCH_SFX_NONE")
 
 def GetBumperFlags(at):
     for i, flag in enumerate(BUMPERFLAGS_ENUM):
-        if(i == 0):
-            if(at & (1 << i)):
-                output = "BUMP_ON"
-            else:
-                output = "BUMP_NONE"
-        elif(at & (1 << i)):
-            output += " | " + flag
+        if (i == 0):
+            output = "BUMP_ON" if (at & (1 << i)) else "BUMP_NONE"
+        elif (at & (1 << i)):
+            output += f" | {flag}"
     return output
 
 def GetOcElemFlags(at):
     for i, flag in enumerate(OCELEMFLAGS_ENUM):
-        if(i == 0):
-            if(at & (1 << i)):
-                output = "OCELEM_ON"
-            else:
-                output = "OCELEM_NONE"
-        elif(at & (1 << i)):
-            output += " | " + flag
+        if (i == 0):
+            output = "OCELEM_ON" if (at & (1 << i)) else "OCELEM_NONE"
+        elif (at & (1 << i)):
+            output += f" | {flag}"
     return output
 
 def GetColliderFormat(type):
@@ -219,15 +198,11 @@ def GetColliderStr(data, off, type):
     cf = GetColliderFormat(type)
     cBase = list(struct.unpack_from(cf[0], data, off))
     if type == T_ACTOR:
-        if cBase[0] == 0:
-            cBase[0] = 'NULL'
-        else:
-            cBase[0] = '0x{0:08X}'.format(cBase[0])
+        cBase[0] = 'NULL' if cBase[0] == 0 else '0x{0:08X}'.format(cBase[0])
+    elif cBase[0] < 14:
+        cBase[0] = TYPE_ENUM[cBase[0]]
     else:
-        if cBase[0] < 14:
-            cBase[0] = TYPE_ENUM[cBase[0]]
-        else:
-            cBase[0] = '0x{0:02X}'.format(cBase[0])
+        cBase[0] = '0x{0:02X}'.format(cBase[0])
 
     cBase[1] = GetATflags(cBase[1])
     cBase[2] = GetACflags(cBase[2])
@@ -387,10 +362,8 @@ def GetColliderInit(address, type, num, path):
     else:
         return("ItemInit type must specify number of elements")
 
-    ovlFile = open(path + "/baserom/" + fileResult.name, "rb")
-    ovlData = bytearray(ovlFile.read())
-    ovlFile.close()
-
+    with open(f"{path}/baserom/{fileResult.name}", "rb") as ovlFile:
+        ovlData = bytearray(ovlFile.read())
     return selectedType[0](ovlData, fileResult.offset, arg2)
 
 def GetColliderInitFull(address, type, num, path):
@@ -399,22 +372,20 @@ def GetColliderInitFull(address, type, num, path):
 
     base = GetColliderInit(address, type, 0, path)
 
-    if(type.find('JntSph') != -1):
+    if (type.find('JntSph') != -1):
         [num, address2, dummy] = base.split('\n')[3].split(',')
         hexaddress = int(address2.strip(' D_'), 16)
-        if(hexaddress == 0):
+        if (hexaddress == 0):
             return base.replace(address2,' NULL')
-        else:
-            elements = GetColliderInit(hexaddress, 'ColliderJntSphElementInit', int(num), path)
-            return elements + base.replace(address2,' sJntSphElementsInit')
-    elif(type.find('Tris') != -1):
+        elements = GetColliderInit(hexaddress, 'ColliderJntSphElementInit', int(num), path)
+        return elements + base.replace(address2,' sJntSphElementsInit')
+    elif (type.find('Tris') != -1):
         [num, address2, dummy] = base.split('\n')[3].split(',')
         hexaddress = int(address2.strip(' D_'), 16)
-        if(hexaddress == 0):
+        if (hexaddress == 0):
             return base.replace(address2,' NULL')
-        else:
-            elements = GetColliderInit(hexaddress, 'ColliderTrisElementInit', int(num), path)
-            return elements + base.replace(address2,' sTrisElementsInit')
+        elements = GetColliderInit(hexaddress, 'ColliderTrisElementInit', int(num), path)
+        return elements + base.replace(address2,' sTrisElementsInit')
     else:
         return base
 

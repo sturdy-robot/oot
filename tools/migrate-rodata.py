@@ -24,14 +24,14 @@ Extracts rodata symbols from asm
 """
 def asm_syms(asm):
     split = re.split("jtbl_|D_",asm)
-    return [s.partition(")")[0] for s in split[1:len(split)]]
+    return [s.partition(")")[0] for s in split[1:]]
 
 """
 Extracts rodata symbols from rodata
 """
 def rodata_syms(rodata):
     split = re.split("glabel jtbl_|glabel D_",rodata)
-    return [s.partition("\n")[0] for s in split[1:len(split)]]
+    return [s.partition("\n")[0] for s in split[1:]]
 
 """
 Extracts the symbol from a single rodata block
@@ -44,22 +44,20 @@ Splits rodata into blocks
 """
 def rodata_blocks(rodata):
     split = rodata.split("glabel")
-    return ["glabel" + b for b in split[1:len(split)]]
+    return [f"glabel{b}" for b in split[1:]]
 
 """
 Gets the block size
 """
 def rodata_block_size(rodata):
     split = rodata.split("    .")
-    elements = split[1:len(split)]
+    elements = split[1:]
     size = 0
     for e in elements:
         element_type = e.split(" ")[0]
         if element_type == "double":
             size += 8
-        if element_type == "float":
-            size += 4
-        if element_type == "word":
+        elif element_type in ["float", "word"]:
             size += 4
         if element_type == "incbin":
             size += int(e.rpartition(", ")[2].split("\n")[0],16)
@@ -82,9 +80,7 @@ def text_size(asm):
 Gets the rodata-to-text ratio
 """
 def late_rodata_ratio(asm,late_rodata_blocks):
-    total_rodata_size = 0
-    for b in late_rodata_blocks:
-        total_rodata_size += rodata_block_size(b)
+    total_rodata_size = sum(rodata_block_size(b) for b in late_rodata_blocks)
     return total_rodata_size/text_size(asm)
 
 """
@@ -109,12 +105,13 @@ def build_rodata(asm, rodata):
     # TODO include arrays in rodata_list
     rodata_list = [r for r in contained_blocks if is_rodata(r)]
     return_str = ""
-    if (len(rodata_list)!=0):
+    if rodata_list:
         return_str += ".rdata\n"
         for r in rodata_list:
             return_str += r
-    late_rodata_list = [r for r in contained_blocks if r not in rodata_list]
-    if (len(late_rodata_list)!=0):
+    if late_rodata_list := [
+        r for r in contained_blocks if r not in rodata_list
+    ]:
         if late_rodata_ratio(asm,late_rodata_list) > (1/3):
             top_sym = rodata_sym(late_rodata_list[0])
             if top_sym.endswith("0") or top_sym.endswith("8"):
@@ -188,13 +185,31 @@ Processes each individual file
  data\code\
 """
 def process_file(filename, identifier, delete_rodata):
-    folder_path = "asm" + sep + "non_matchings" + sep + ("code" + sep if identifier=="code" else "overlays" + sep + identifier.lower() + sep + "ovl_") + filename + sep
-    rodata_path = "data" + sep + (sep if identifier=="code" else "overlays" + sep + identifier.lower() + sep + "z_") + filename.lower() + ".rodata.s"
+    folder_path = (
+        f"asm{sep}non_matchings{sep}"
+        + (
+            f"code{sep}"
+            if identifier == "code"
+            else f"overlays{sep}{identifier.lower()}{sep}ovl_"
+        )
+        + filename
+        + sep
+    )
+    rodata_path = (
+        f"data{sep}"
+        + (
+            sep
+            if identifier == "code"
+            else f"overlays{sep}{identifier.lower()}{sep}z_"
+        )
+        + filename.lower()
+        + ".rodata.s"
+    )
     if filename == "player":
-        folder_path = "asm" + sep + "non_matchings" + sep + "overlays" + sep + "actors" + sep + "ovl_player_actor" + sep
+        folder_path = f"asm{sep}non_matchings{sep}overlays{sep}actors{sep}ovl_player_actor{sep}"
     rodata_path = rodata_path.replace("effect_", "eff_")
-    print("ASM at: " + folder_path)
-    print("Data at: " + rodata_path)
+    print(f"ASM at: {folder_path}")
+    print(f"Data at: {rodata_path}")
     if not exists(folder_path):
         print("Aborting: ASM does not exist")
         return
@@ -204,20 +219,20 @@ def process_file(filename, identifier, delete_rodata):
     files = [folder_path + f for f in get_file_paths(folder_path)]
     for asm_file in files:
         asm = file_read(asm_file)
-        print("Found asm file " + asm_file)
+        print(f"Found asm file {asm_file}")
         if ".rdata" in asm:
             print("Skipping: it already has a rodata section")
             continue
-        print("Processing asm file " + asm_file)
+        print(f"Processing asm file {asm_file}")
         section = build_rodata(asm, file_read(rodata_path))
         if section is not None:
-            print("Writing asm file " + asm_file)
+            print(f"Writing asm file {asm_file}")
             rodata_write(asm_file, section)
         else: print("Skipping: no rodata to write")
-    print("Built rodata sections for " + identifier + " file " + filename)
+    print(f"Built rodata sections for {identifier} file {filename}")
     if delete_rodata:
         remove(rodata_path)
-        print("Deleted rodata at " + rodata_path)
+        print(f"Deleted rodata at {rodata_path}")
 
 """
 Allows files to be provided as comma-separated filenames for batch migration
@@ -233,8 +248,7 @@ def process_files(filenames, identifier, spechandle, delete_rodata):
         modify_spec(filenames, identifier, True)
         print("Deleted rodata for files in spec")
     elif spechandle.lower() == "comment":
-        result = modify_spec(filenames, identifier, False)
-        if result:
+        if result := modify_spec(filenames, identifier, False):
             print("Commented out rodata for files in spec")
 
 """
@@ -248,7 +262,15 @@ def check_spec_rodata(filenames, identifier):
         if "all|" in filenames:
             print("all| in filenames")
             to_remove_list = filenames.split("|")[1]
-        basedir = "asm" + sep + "non_matchings" + sep + ("code" if identifier=="code" else "overlays" + sep + identifier.lower()) + sep
+        basedir = (
+            f"asm{sep}non_matchings{sep}"
+            + (
+                "code"
+                if identifier == "code"
+                else f"overlays{sep}{identifier.lower()}"
+            )
+            + sep
+        )
         folder_names = [name.replace("ovl_","") for name in listdir(basedir) if isdir(basedir + name) and name not in to_remove_list]
         filenames = ",".join(map(str, folder_names))
         print(filenames)

@@ -25,15 +25,12 @@ def index_to_offset(index):
 def read_file(filename):
     parsed_contents = ""
 
-    src_file = open(filename)
-    file_contents = src_file.read()
-    src_file.close()
-
+    with open(filename) as src_file:
+        file_contents = src_file.read()
     pattern = re.compile("gRegEditor->data\[((0[xX])?[0-9a-fA-F]+)\]")
 
-    match = pattern.search(file_contents)
-    while match:
-        index = parse_number(match.group(1), False)
+    while match := pattern.search(file_contents):
+        index = parse_number(match[1], False)
         offset = index_to_offset(index)
 
         start, end = match.span()
@@ -41,8 +38,6 @@ def read_file(filename):
         parsed_contents += get_reg_macro(offset)
 
         file_contents = file_contents[end:]
-        match = pattern.search(file_contents)
-
     parsed_contents += file_contents
     return parsed_contents
 
@@ -85,7 +80,7 @@ def main():
         if args.offset:
             offset = index
             if not check_valid_offset(offset):
-                print("Invalid offset: " + args.index)
+                print(f"Invalid offset: {args.index}")
                 if args.hex:
                     print("Offset should be in the range from 0x14 to 0x15D2")
                 else:
@@ -93,7 +88,7 @@ def main():
                 exit(-1)
         else:
             if not check_valid_index(index):
-                print("Invalid index: " + args.index)
+                print(f"Invalid index: {args.index}")
                 if args.hex:
                     print("Index should be in the range from 0x0 to 0xADF")
                 else:

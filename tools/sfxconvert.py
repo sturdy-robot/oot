@@ -58,9 +58,9 @@ def lookup_sfx(idnum, repo):
     return 'INVALID_ID'
 
 def fix_sfx_flag(id):
-    if(id.endswith(' - SFX_FLAG')):
+    if (id.endswith(' - SFX_FLAG')):
         splitdata = id.split('-')
-        return splitdata[0].strip(), ' -' + splitdata[1]
+        return splitdata[0].strip(), f' -{splitdata[1]}'
     if not(int(id,16) & 0x800):
         newid = '0x' + format(int(id,16) + 0x800,'X')
         sfxFlag = ' - SFX_FLAG'
@@ -94,10 +94,7 @@ def fix_sfx_func(sourcedata, i, j, repo):
 def find_audio_func(line):
     audiofuncs = list(AudioFunctions.keys())
     funcname = line.split('(')[0].strip()
-    for func in audiofuncs:
-        if(line.count(func)):
-            return func
-    return False
+    return next((func for func in audiofuncs if (line.count(func))), False)
 
 def fix_sfx_all(repo):
     global Verbose2
@@ -115,7 +112,7 @@ def fix_sfx_all(repo):
     return 1
 
 def fix_sfx(file, repo, outfile = None):
-    if(outfile == None):
+    if outfile is None:
         outfile = file
     make_audio_dict(AudioFunctions, repo)
     with open(file,'r',encoding='utf-8') as sourcefile:

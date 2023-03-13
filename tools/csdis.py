@@ -297,7 +297,7 @@ unk_data_entry = ("CS_UNK_DATA_LIST(%w1:0:x, %w1:1:s)", 2, None, 0,
 
 linesep = "\n"
 indent = "    "
-line_end = "," + linesep
+line_end = f",{linesep}"
 
 """
 Since multiple command ids can map to the same command macro, to shorten the dictionary
@@ -305,10 +305,7 @@ we introduce a function to allow these command ids to be grouped into tuples.
 """
 def multi_key(key):
     for k in cutscene_command_macros.keys():
-        if type(k) is int:
-            if k == key:
-                return cutscene_command_macros[k]
-        elif key in k:
+        if type(k) is int and k == key or type(k) is not int and key in k:
             return cutscene_command_macros[k]
 
 """
@@ -316,7 +313,11 @@ Args
 """
 
 def arg_count(cmd_def):
-    return len([x for x in cmd_def.split("(")[1].split(")")[0].split(",")]) if "()" not in cmd_def else 0
+    return (
+        len(list(cmd_def.split("(")[1].split(")")[0].split(",")))
+        if "()" not in cmd_def
+        else 0
+    )
 
 def arg_part(arg, num):
     return arg.replace("%","").split(":")[num]
@@ -355,10 +356,7 @@ Formatting
 
 def pad(string, length):
     string = string.replace("0x","")
-    if len(string) < length:
-        return pad("0"+string, length)
-    else:
-        return string
+    return pad(f"0{string}", length) if len(string) < length else string
 
 def format_arg(arg, words):
     word = words[int(arg_part(arg, 1))] # the word to look in
@@ -397,24 +395,22 @@ def format_arg(arg, words):
     elif format_type == "s":
         result = str(value)
     elif format_type == "x":
-        result = "0x" + pad(hex(unsigned_value), pad_len).upper()
+        result = f"0x{pad(hex(unsigned_value), pad_len).upper()}"
     elif format_type == "f":
-        result = str(get_float(value))+"f"
+        result = f"{str(get_float(value))}f"
     else:
         print("Something went wrong!") # TODO more debug info
         os._exit(1)
     return result
 
 def format_cmd(cmd, words):
-    if "__SPECIAL" in cmd:
-        # special handling for textbox list macros, as there are multiple dependent on particular values
-        if "CS_TEXT_LIST" in cmd:
-            if get_short_unsigned(words[1], 0) == 0xFFFF:
-                cmd = "CS_TEXT_NONE(%h1:1:s, %h2:2:s)"
-            elif get_short(words[2], 1) == 2:
-                cmd = "CS_TEXT_OCARINA_ACTION(%h2:1:e2, %h1:1:s, %h2:2:s, %h2:3:x)"
-            else:
-                cmd = "CS_TEXT(%h2:1:x, %h1:1:s, %h2:2:s, %h1:2:x, %h2:3:x, %h1:3:x)"
+    if "__SPECIAL" in cmd and "CS_TEXT_LIST" in cmd:
+        if get_short_unsigned(words[1], 0) == 0xFFFF:
+            cmd = "CS_TEXT_NONE(%h1:1:s, %h2:2:s)"
+        elif get_short(words[2], 1) == 2:
+            cmd = "CS_TEXT_OCARINA_ACTION(%h2:1:e2, %h1:1:s, %h2:2:s, %h2:3:x)"
+        else:
+            cmd = "CS_TEXT(%h2:1:x, %h1:1:s, %h2:2:s, %h1:2:x, %h2:3:x, %h1:3:x)"
     for arg in args_list(cmd):
         cmd = cmd.replace(arg, format_arg(arg, words))
     return cmd
@@ -434,10 +430,10 @@ def disassemble_cutscene(cs_in):
     i+=1
     if (total_entries < 0 or cutscene_end_frame < 0):
         print("This cutscene would abort if played in-engine")
-        if total_entries < 0:
-            return "Could not disassemble cutscene: Number of commands is negative"
+    if total_entries < 0:
+        return "Could not disassemble cutscene: Number of commands is negative"
     macros = format_cmd(begin_cutscene_entry[0], [total_entries, cutscene_end_frame])+line_end
-    for k in range(0,total_entries+1):
+    for _ in range(total_entries+1):
         cmd_type = cs_in[i]
         if (cmd_type == 0xFFFFFFFF):
             return macros + multi_key(-1)[0]+line_end
@@ -446,7 +442,10 @@ def disassemble_cutscene(cs_in):
             entry = unk_data_entry
         cmd_macro = entry[0]
         n_words = entry[1]
-        macros += format_cmd(cmd_macro, [cs_in[i+j] for j in range(0, n_words)])+line_end
+        macros += (
+            format_cmd(cmd_macro, [cs_in[i + j] for j in range(n_words)])
+            + line_end
+        )
         list_item = entry[4]
         if list_item is not None: # Not all macros have associated list item macros
             continue_stop = entry[2]
@@ -458,17 +457,45 @@ def disassemble_cutscene(cs_in):
                 while do_continue:
                     # "Integer Divide" by 4 to get the word it's in
                     # Modulo operator to get the byte relative to the start of the word
-                    do_continue = True if get_byte(cs_in[i+(continue_stop // 4)], continue_stop % 4) == 0x00 else False
-                    macros += indent+format_cmd(list_item, [0, *[cs_in[i+j] for j in range(0, n_words_list_item)]])+line_end
+                    do_continue = (
+                        get_byte(
+                            cs_in[i + (continue_stop // 4)], continue_stop % 4
+                        )
+                        == 0x00
+                    )
+                    macros += (
+                        indent
+                        + format_cmd(
+                            list_item,
+                            [
+                                0,
+                                *[
+                                    cs_in[i + j]
+                                    for j in range(n_words_list_item)
+                                ],
+                            ],
+                        )
+                        + line_end
+                    )
                     i += n_words_list_item
             elif cmd_entries is not None: # Not all macros have a defined number of entries
-                if cmd_entries < 0: # Some have a fixed number of entries
-                    num_entries = -cmd_entries
-                else: # Some specify their number of entries
-                    num_entries = cs_in[i+cmd_entries+1]
+                num_entries = -cmd_entries if cmd_entries < 0 else cs_in[i+cmd_entries+1]
                 i += n_words
-                for n in range(0,num_entries):
-                    macros += indent+format_cmd(list_item, [0, *[cs_in[i+j] for j in range(0, n_words_list_item)]])+line_end
+                for _ in range(num_entries):
+                    macros += (
+                        indent
+                        + format_cmd(
+                            list_item,
+                            [
+                                0,
+                                *[
+                                    cs_in[i + j]
+                                    for j in range(n_words_list_item)
+                                ],
+                            ],
+                        )
+                        + line_end
+                    )
                     i += n_words_list_item
         else:
             i += n_words
@@ -496,7 +523,7 @@ def main():
 
     script_dir = os.path.dirname(os.path.realpath(__file__))
     cs_data = None
-    with open(script_dir + "/../baserom/" + file_result.name, "rb") as ovl_file:
+    with open(f"{script_dir}/../baserom/{file_result.name}", "rb") as ovl_file:
         ovl_file.seek(file_result.offset)
         cs_data = [i[0] for i in struct.iter_unpack(">I",  bytearray(ovl_file.read()))]
     if cs_data is not None:

@@ -47,7 +47,7 @@ def get_clang_executable(allowed_executables: List[str]):
 def get_tidy_version(tidy_executable: str):
     tidy_version_run = subprocess.run([tidy_executable, "--version"], stdout=subprocess.PIPE, universal_newlines=True)
     match = re.search(r"LLVM version ([0-9]+)", tidy_version_run.stdout)
-    return int(match.group(1))
+    return int(match[1])
 
 
 CLANG_FORMAT = get_clang_executable([f"clang-format-{CLANG_VER}", "clang-format"])
@@ -108,7 +108,9 @@ def format_files(src_files: List[str], extra_files: List[str], nb_jobs: int):
     if nb_jobs != 1:
         print(f"Formatting files with {nb_jobs} jobs")
     else:
-        print(f"Formatting files with a single job (consider using -j to make this faster)")
+        print(
+            "Formatting files with a single job (consider using -j to make this faster)"
+        )
 
     # Format files in chunks to improve performance while still utilizing jobs
     file_chunks = list(list_chunks(src_files, (len(src_files) // nb_jobs) + 1))
@@ -156,11 +158,10 @@ def main():
     args = parser.parse_args()
 
     nb_jobs = args.jobs or multiprocessing.cpu_count()
-    if nb_jobs > 1:
-        if CLANG_APPLY_REPLACEMENTS is None:
-            sys.exit(
-                f"Error: neither clang-apply-replacements nor clang-apply-replacements-{CLANG_VER} found (required to use -j)"
-            )
+    if nb_jobs > 1 and CLANG_APPLY_REPLACEMENTS is None:
+        sys.exit(
+            f"Error: neither clang-apply-replacements nor clang-apply-replacements-{CLANG_VER} found (required to use -j)"
+        )
 
     if args.files:
         files = args.files

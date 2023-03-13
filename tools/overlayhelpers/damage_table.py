@@ -48,7 +48,7 @@ def convert_dmg_table_str(dmg_table_str):
     return make_table(name, hex_data)
 
 def replace_damage_table_all(repo):
-    actors = 'src' + os.sep + 'overlays' + os.sep + 'actors'
+    actors = f'src{os.sep}overlays{os.sep}actors'
     for subdir, dirs, files in os.walk(repo + os.sep + actors):
         for filename in files:
             if(filename.endswith('.c')):
@@ -96,9 +96,9 @@ def replace_damage_table(src):
     return len(replacements)
 
 def make_table(name, data):
-    damage_table = "DamageTable " + name + " = {\n"
+    damage_table = f"DamageTable {name}" + " = {\n"
     linestart = "    /* "
-    padlen = max([len(x) for x in damage_types])
+    padlen = max(len(x) for x in damage_types)
     for i, dbyte in enumerate(data):
         typestr = damage_types[i]
         typestr += ' ' * (padlen - len(typestr)) + ' */ '
@@ -114,9 +114,7 @@ def format_damage_byte(dbyte):
     effstr = format(effect, 'X')
     dstr = str(damage)
 
-    dtentry = 'DMG_ENTRY(' + dstr + ' , 0x' + effstr + '),\n'
-
-    return dtentry
+    return f'DMG_ENTRY({dstr} , 0x{effstr}' + '),\n'
 
 def get_damage_bytes(address, repo):
     file_result = None
@@ -137,9 +135,7 @@ def get_damage_bytes(address, repo):
 
     damage_data = ovl_data[file_result.offset:file_result.offset+0x20]
 
-    damage_table = make_table('D_' + format(address, 'X'), damage_data)
-
-    return damage_table
+    return make_table('D_' + format(address, 'X'), damage_data)
 
 def hex_parse(s):
     return int(s, 16)

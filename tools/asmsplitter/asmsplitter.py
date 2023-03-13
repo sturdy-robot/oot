@@ -3,7 +3,7 @@ import os
 class FileEntry:
     def __init__(self, nFuncName):
         self.funcName = nFuncName
-        self.lines = list()
+        self.lines = []
 
 def ReadAllLines(filename):
     with open(filename) as f:
@@ -27,14 +27,14 @@ if not os.path.exists("c"):
 dirs = os.listdir("asm")
 
 for directory in dirs:
-    if (os.path.isdir("asm//" + directory)):
+    if os.path.isdir(f"asm//{directory}"):
         continue
 
-    print("Processing asm//" + directory)
-    
+    print(f"Processing asm//{directory}")
+
     folderName = os.path.splitext(directory)[0]
-    lines = ReadAllLines("asm//" + directory)
-    functions = list()
+    lines = ReadAllLines(f"asm//{directory}")
+    functions = []
     currentFunction = None
 
     for line in lines:
@@ -50,13 +50,13 @@ for directory in dirs:
     if (currentFunction != None):
         functions.insert(len(functions), currentFunction)
 
-    if not os.path.exists("asm//" + folderName):
-        os.makedirs("asm//" + folderName)
+    if not os.path.exists(f"asm//{folderName}"):
+        os.makedirs(f"asm//{folderName}")
 
     for func in functions:
-        WriteAllLines("asm//" + folderName + "//" + func.funcName + ".s", func.lines)
+        WriteAllLines(f"asm//{folderName}//{func.funcName}.s", func.lines)
 
-    cLines = list()
+    cLines = []
 
     cLines.insert(len(cLines), "#include <ultra64.h>")
     cLines.insert(len(cLines), "#include <global.h>\n")
@@ -64,6 +64,6 @@ for directory in dirs:
     for func in functions:
         cLines.insert(len(cLines), "#pragma GLOBAL_ASM(\"asm/non_matchings/code/" + folderName + "/" + func.funcName + ".s\")\n")
 
-    WriteAllLines("c//" + folderName + ".c", cLines)
-    
+    WriteAllLines(f"c//{folderName}.c", cLines)
+
 print("Done!")

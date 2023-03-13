@@ -34,7 +34,7 @@ def ExtractFile(xmlPath, outputPath, outputSourcePath):
     if exitValue != 0:
         globalAbort.set()
         print("\n")
-        print("Error when extracting from file " + xmlPath, file=os.sys.stderr)
+        print(f"Error when extracting from file {xmlPath}", file=os.sys.stderr)
         print("Aborting...", file=os.sys.stderr)
         print("\n")
 
@@ -83,7 +83,7 @@ def processZAPDArgs(argsZ):
         exit(1)
 
     ZAPDArgs = " ".join(f"-{z}" for z in argsZ)
-    print("Using extra ZAPD arguments: " + ZAPDArgs)
+    print(f"Using extra ZAPD arguments: {ZAPDArgs}")
     return ZAPDArgs
 
 def main():
@@ -110,7 +110,7 @@ def main():
 
     asset_path = args.single
     if asset_path is not None:
-        fullPath = os.path.join("assets", "xml", asset_path + ".xml")
+        fullPath = os.path.join("assets", "xml", f"{asset_path}.xml")
         if not os.path.exists(fullPath):
             print(f"Error. File {fullPath} does not exist.", file=os.sys.stderr)
             exit(1)
@@ -147,7 +147,11 @@ def main():
             numCores = int(args.jobs or 0)
             if numCores <= 0:
                 numCores = 1
-            print("Extracting assets with " + str(numCores) + " CPU core" + ("s" if numCores > 1 else "") + ".")
+            print(
+                f"Extracting assets with {numCores} CPU core"
+                + ("s" if numCores > 1 else "")
+                + "."
+            )
             with multiprocessing.get_context("fork").Pool(numCores,  initializer=initializeWorker, initargs=(mainAbort, args.unaccounted, extractedAssetsTracker, manager)) as p:
                 p.map(ExtractFunc, xmlFiles)
         except (multiprocessing.ProcessError, TypeError):
@@ -159,9 +163,9 @@ def main():
                 ExtractFunc(singlePath)
 
     with open(EXTRACTED_ASSETS_NAMEFILE, 'w', encoding='utf-8') as f:
-        serializableDict = dict()
-        for xml, data in extractedAssetsTracker.items():
-            serializableDict[xml] = dict(data)
+        serializableDict = {
+            xml: dict(data) for xml, data in extractedAssetsTracker.items()
+        }
         json.dump(dict(serializableDict), f, ensure_ascii=False, indent=4)
 
     if mainAbort.is_set():

@@ -5,7 +5,7 @@ import re
 import sys
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
+root_dir = f"{script_dir}/../"
 
 
 def handle_match(match):
@@ -26,10 +26,7 @@ def handle_match(match):
     except UnicodeDecodeError:
         return original_text
 
-    if text[2:].lower() == match_text.lower():
-        return original_text
-
-    return text + end
+    return original_text if text[2:].lower() == match_text.lower() else text + end
 
 
 def process_file(file_path):
@@ -55,7 +52,7 @@ def main():
             if file.endswith(".s") and file not in skip_list:
                 path = os.path.join(root, file)
                 if process_file(path):
-                    print("Processed " + path)
+                    print(f"Processed {path}")
                     i += 1
 
 

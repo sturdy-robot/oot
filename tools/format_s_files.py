@@ -6,9 +6,9 @@ import re
 from disassemble import get_z_name
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-src_dir = root_dir + "src/overlays/"
-asm_dir = root_dir + "asm/non_matchings/overlays/"
+root_dir = f"{script_dir}/../"
+src_dir = f"{root_dir}src/overlays/"
+asm_dir = f"{root_dir}asm/non_matchings/overlays/"
 
 
 def remove_empty_lines_after_glabel(file_text):
@@ -22,7 +22,7 @@ def remove_empty_lines_after_glabel(file_text):
         if last_glabel and not line.strip():
             to_remove.append(i)
         last_glabel = False
-    if len(to_remove) > 0:
+    if to_remove:
         for line_num in reversed(to_remove):
             del file_lines[line_num]
         file_text = "\n".join(file_lines)
@@ -39,7 +39,7 @@ def remove_balign_after_float(file_text):
         if last_float and line == "    .balign 4":
             to_remove.append(i)
         last_float = False
-    if len(to_remove) > 0:
+    if to_remove:
         for line_num in reversed(to_remove):
             del file_lines[line_num]
         file_text = "\n".join(file_lines)

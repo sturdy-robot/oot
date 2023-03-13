@@ -26,7 +26,7 @@ def RamToOff(vram):
 def GetPoints(data, ptr):
     points = []
     off = RamToOff(ptr)
-    for i in range(12):
+    for _ in range(12):
         v = struct.unpack_from(">hhff", data[off:off+0x0C])
         if not (SIMPLIFY_OUTPUT and v[0] == 0 and v[2] == 0 and v[3] == 0):
             points.append([v[0], v[2], v[3]])
@@ -52,9 +52,7 @@ def GetIconName(v):
         return "PAUSE_MAP_MARK_CHEST"
     if v == 1:
         return "PAUSE_MAP_MARK_BOSS"
-    if v == -1:
-        return "PAUSE_MAP_MARK_NONE"
-    return v
+    return "PAUSE_MAP_MARK_NONE" if v == -1 else v
 
 def GetVtxPointer(v):
     if v == 0:
@@ -73,7 +71,7 @@ repo = scriptDir + os.sep +  ".." + os.sep + ".."
 
 
 kaleido_scope_data = []
-with open(repo + "/baserom/ovl_kaleido_scope", "rb") as file:
+with open(f"{repo}/baserom/ovl_kaleido_scope", "rb") as file:
     kaleido_scope_data = bytearray(file.read())
 
 scenemaps = []
@@ -81,7 +79,7 @@ i = 0
 
 for name, numMaps in SCENES:
     maps = []
-    for k in range(numMaps):
+    for _ in range(numMaps):
         maps.append(GetSceneMap(kaleido_scope_data, gPauseMapMarkDataTable + (i * 0x1EC)))
         i += 1
     scenemaps.append((name, maps))
@@ -91,17 +89,17 @@ cstr = ""
 cstr += f"PauseMapMarksData gPauseMapMarkDataTable[] = {{\n"
 for scenemap in scenemaps:
     for mapId, map in enumerate(scenemap[1]):
-        cstr += IND(1) + f"// {scenemap[0]} map {mapId}\n"
+        cstr += f"{IND(1)}// {scenemap[0]} map {mapId}\n"
         cstr += IND(1) + "{\n"
         for icon in map:
             if SIMPLIFY_OUTPUT and icon[0] == -1:
-                cstr += IND(2) + f"{{ {GetIconName(icon[0])}, 0, NULL, 0, 0, {{ 0 }} }},\n"
+                cstr += f"{IND(2)}{{ {GetIconName(icon[0])}, 0, NULL, 0, 0, {{ 0 }} }},\n"
             else:
                 cstr += IND(2) + "{\n"
-                cstr += IND(3) + f"{GetIconName(icon[0])}, {icon[1]}, {GetVtxPointer(icon[2])}, {icon[3]}, {icon[4]},\n"
+                cstr += f"{IND(3)}{GetIconName(icon[0])}, {icon[1]}, {GetVtxPointer(icon[2])}, {icon[3]}, {icon[4]},\n"
                 cstr += IND(3) + "{\n"
                 for point in icon[5]:
-                    cstr += IND(4) + f"{{ {point[0]}, {point[1]}f, {point[2]}f }},\n"
+                    cstr += f"{IND(4)}{{ {point[0]}, {point[1]}f, {point[2]}f }},\n"
                 cstr += IND(3) + "}\n"
                 cstr += IND(2) + "},\n"
         cstr += IND(1) + "},\n"

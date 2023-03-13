@@ -7,9 +7,9 @@ import argparse
 import math
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-asm_dir = root_dir + "asm/non_matchings/overlays/actors"
-build_dir = root_dir + "build/src/overlays/actors"
+root_dir = f"{script_dir}/../"
+asm_dir = f"{root_dir}asm/non_matchings/overlays/actors"
+build_dir = f"{root_dir}build/src/overlays/actors"
 
 
 def get_num_instructions(f_path):
@@ -66,8 +66,7 @@ def count_builded_funcs_and_instructions(f_path):
     for line in f_lines:
         if line.strip() == "":
             continue
-        match_function = pattern_function.match(line)
-        if match_function:
+        if match_function := pattern_function.match(line):
             func_name = match_function.group(1)
             if pattern_switchcase.match(func_name):
                 # this is not a real function tag.
@@ -136,20 +135,18 @@ def print_csv(overlays, ignored, include_only):
 
     for actor_data in sorted_actors:
         name = actor_data[0]
-        other = actor_data[1]
         if name in ignored:
             continue
         if include_only and name not in include_only:
             continue
+        other = actor_data[1]
         print(row.format(name, *other))
 
 
 def print_function_lines(overlays, ignored, include_only):
     sorted_actors = []
     for k, v in overlays.items():
-        func_data = []
-        for func_name, lines in v["funcs"].items():
-            func_data.append((func_name, lines))
+        func_data = list(v["funcs"].items())
         #func_data.sort(key=lambda x: x[1], reverse=True)
         sorted_actors.append((k, func_data))
     sorted_actors.sort()
@@ -187,11 +184,7 @@ Flags can be mixed to produce a customized result:
     parser.add_argument("--include-only", help="Path to a file containing actor's names. Only data of actors in this list will be printed.")
     args = parser.parse_args()
 
-    if args.non_matching:
-        overlays = count_non_matching()
-    else:
-        overlays = count_build()
-
+    overlays = count_non_matching() if args.non_matching else count_build()
     ignored = get_list_from_file(args.ignore)
     include_only = get_list_from_file(args.include_only)
 

@@ -22,7 +22,7 @@ romFileExtensions = ["z64", "n64", "v64"]
 def find_baserom_original():
     for romFileExtLower in romFileExtensions:
         for romFileExt in (romFileExtLower, romFileExtLower.upper()):
-            romFileNameCandidate = "baserom_original." + romFileExt
+            romFileNameCandidate = f"baserom_original.{romFileExt}"
             if path.exists(romFileNameCandidate):
                 return romFileNameCandidate
     return None
@@ -34,13 +34,13 @@ if romFileName is None:
     sys.exit(1)
 
 # Read in the original ROM
-print("File '" + romFileName + "' found.")
+print(f"File '{romFileName}' found.")
 with open(romFileName, mode="rb") as file:
     fileContent = bytearray(file.read())
 
 # Strip the overdump
 print("Stripping overdump...")
-fileContent = fileContent[0:0x3600000]
+fileContent = fileContent[:0x3600000]
 
 fileContentLen = len(fileContent)
 
@@ -49,21 +49,20 @@ fileContentLen = len(fileContent)
 if fileContent[0] == 0x40:
     # Word Swap ROM
     print("ROM needs to be word swapped...")
-    words = str(int(fileContentLen/4))
-    little_byte_format = "<" + words + "I"
-    big_byte_format = ">" + words + "I"
+    words = str(fileContentLen // 4)
+    little_byte_format = f"<{words}I"
+    big_byte_format = f">{words}I"
     tmp = struct.unpack_from(little_byte_format, fileContent, 0)
     struct.pack_into(big_byte_format, fileContent, 0, *tmp)
 
     print("Word swapping done.")
 
-# Byte-swapped
 elif fileContent[0] == 0x37:
     # Byte Swap ROM
     print("ROM needs to be byte swapped...")
-    halfwords = str(int(fileContentLen/2))
-    little_byte_format = "<" + halfwords + "H"
-    big_byte_format = ">" + halfwords + "H"
+    halfwords = str(fileContentLen // 2)
+    little_byte_format = f"<{halfwords}H"
+    big_byte_format = f">{halfwords}H"
     tmp = struct.unpack_from(little_byte_format, fileContent, 0)
     struct.pack_into(big_byte_format, fileContent, 0, *tmp)
 
@@ -79,8 +78,9 @@ for i in range(0x35CF000, len(fileContent)):
 # Check to see if the ROM is a "vanilla" Debug ROM
 str_hash = get_str_hash(bytearray(fileContent))
 if str_hash != "f0b7f35375f9cc8ca1b2d59d78e35405":
-    print("Error: Expected a hash of f0b7f35375f9cc8ca1b2d59d78e35405 but got " + str_hash + ". " +
-          "The baserom has probably been tampered, find a new one")
+    print(
+        f"Error: Expected a hash of f0b7f35375f9cc8ca1b2d59d78e35405 but got {str_hash}. The baserom has probably been tampered, find a new one"
+    )
 
     if str_hash == "32fe2770c0f9b1a9cd2a4d449348c1cb":
         print("The provided baserom is a rom which has been edited with ZeldaEdit and is not suitable for use with decomp. " +

@@ -172,7 +172,7 @@ def disas_elfmsgs(start):
     branches = []
     pos = start
 
-    while (True):
+    while True:
         print(f"/* {pos - start:04X} {((pos - start) // 4):3} */ ", end="")
 
         b0, b1, b2, b3 = struct.unpack(">BBBB", baserom[pos:pos+4])
@@ -250,7 +250,7 @@ def disas_elfmsgs(start):
         pos += 4
         if not cont:
             print("")
-        if not cont and all([dst < pos - start for dst in branches]):
-            break
+            if all(dst < pos - start for dst in branches):
+                break
 
 disas_elfmsgs(int(sys.argv[1],16))

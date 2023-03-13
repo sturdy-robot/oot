@@ -232,7 +232,7 @@ class Section:
         return ret
 
     def is_rel(self):
-        return self.sh_type == SHT_REL or self.sh_type == SHT_RELA
+        return self.sh_type in [SHT_REL, SHT_RELA]
 
     def header_to_bin(self):
         if self.sh_type != SHT_NOBITS:
@@ -249,10 +249,14 @@ class Section:
 
     def find_symbol(self, name):
         assert self.sh_type == SHT_SYMTAB
-        for s in self.symbol_entries:
-            if s.name == name:
-                return (s.st_shndx, s.st_value)
-        return None
+        return next(
+            (
+                (s.st_shndx, s.st_value)
+                for s in self.symbol_entries
+                if s.name == name
+            ),
+            None,
+        )
 
     def find_symbol_in_section(self, name, section):
         pos = self.find_symbol(name)
@@ -264,16 +268,18 @@ class Section:
         assert self.sh_type == SHT_SYMTAB
         assert self.sh_entsize == 16
         self.strtab = sections[self.sh_link]
-        entries = []
-        for i in range(0, self.sh_size, self.sh_entsize):
-            entries.append(Symbol(self.fmt, self.data[i:i+self.sh_entsize], self.strtab))
+        entries = [
+            Symbol(self.fmt, self.data[i : i + self.sh_entsize], self.strtab)
+            for i in range(0, self.sh_size, self.sh_entsize)
+        ]
         self.symbol_entries = entries
 
     def init_relocs(self):
         assert self.is_rel()
-        entries = []
-        for i in range(0, self.sh_size, self.sh_entsize):
-            entries.append(Relocation(self.fmt, self.data[i:i+self.sh_entsize], self.sh_type))
+        entries = [
+            Relocation(self.fmt, self.data[i : i + self.sh_entsize], self.sh_type)
+            for i in range(0, self.sh_size, self.sh_entsize)
+        ]
         self.relocations = entries
 
     def local_symbols(self):
@@ -290,13 +296,33 @@ class Section:
         shift_by = self.sh_offset - original_offset
 
         # Update the file-relative offsets in the Symbolic HDRR
-        hdrr_magic, hdrr_vstamp, hdrr_ilineMax, hdrr_cbLine, \
-            hdrr_cbLineOffset, hdrr_idnMax, hdrr_cbDnOffset, hdrr_ipdMax, \
-            hdrr_cbPdOffset, hdrr_isymMax, hdrr_cbSymOffset, hdrr_ioptMax, \
-            hdrr_cbOptOffset, hdrr_iauxMax, hdrr_cbAuxOffset, hdrr_issMax, \
-            hdrr_cbSsOffset, hdrr_issExtMax, hdrr_cbSsExtOffset, hdrr_ifdMax, \
-            hdrr_cbFdOffset, hdrr_crfd, hdrr_cbRfdOffset, hdrr_iextMax, \
-            hdrr_cbExtOffset = self.fmt.unpack("HHIIIIIIIIIIIIIIIIIIIIIII", self.data[0:0x60])
+        (
+            hdrr_magic,
+            hdrr_vstamp,
+            hdrr_ilineMax,
+            hdrr_cbLine,
+            hdrr_cbLineOffset,
+            hdrr_idnMax,
+            hdrr_cbDnOffset,
+            hdrr_ipdMax,
+            hdrr_cbPdOffset,
+            hdrr_isymMax,
+            hdrr_cbSymOffset,
+            hdrr_ioptMax,
+            hdrr_cbOptOffset,
+            hdrr_iauxMax,
+            hdrr_cbAuxOffset,
+            hdrr_issMax,
+            hdrr_cbSsOffset,
+            hdrr_issExtMax,
+            hdrr_cbSsExtOffset,
+            hdrr_ifdMax,
+            hdrr_cbFdOffset,
+            hdrr_crfd,
+            hdrr_cbRfdOffset,
+            hdrr_iextMax,
+            hdrr_cbExtOffset,
+        ) = self.fmt.unpack("HHIIIIIIIIIIIIIIIIIIIIIII", self.data[:0x60])
 
         assert hdrr_magic == 0x7009, "Invalid magic value for .mdebug symbolic header"
 
@@ -312,13 +338,34 @@ class Section:
         hdrr_cbRfdOffset += shift_by
         hdrr_cbExtOffset += shift_by
 
-        new_data[0:0x60] = self.fmt.pack("HHIIIIIIIIIIIIIIIIIIIIIII", hdrr_magic, hdrr_vstamp, hdrr_ilineMax, hdrr_cbLine, \
-            hdrr_cbLineOffset, hdrr_idnMax, hdrr_cbDnOffset, hdrr_ipdMax, \
-            hdrr_cbPdOffset, hdrr_isymMax, hdrr_cbSymOffset, hdrr_ioptMax, \
-            hdrr_cbOptOffset, hdrr_iauxMax, hdrr_cbAuxOffset, hdrr_issMax, \
-            hdrr_cbSsOffset, hdrr_issExtMax, hdrr_cbSsExtOffset, hdrr_ifdMax, \
-            hdrr_cbFdOffset, hdrr_crfd, hdrr_cbRfdOffset, hdrr_iextMax, \
-            hdrr_cbExtOffset)
+        new_data[:0x60] = self.fmt.pack(
+            "HHIIIIIIIIIIIIIIIIIIIIIII",
+            hdrr_magic,
+            hdrr_vstamp,
+            hdrr_ilineMax,
+            hdrr_cbLine,
+            hdrr_cbLineOffset,
+            hdrr_idnMax,
+            hdrr_cbDnOffset,
+            hdrr_ipdMax,
+            hdrr_cbPdOffset,
+            hdrr_isymMax,
+            hdrr_cbSymOffset,
+            hdrr_ioptMax,
+            hdrr_cbOptOffset,
+            hdrr_iauxMax,
+            hdrr_cbAuxOffset,
+            hdrr_issMax,
+            hdrr_cbSsOffset,
+            hdrr_issExtMax,
+            hdrr_cbSsExtOffset,
+            hdrr_ifdMax,
+            hdrr_cbFdOffset,
+            hdrr_crfd,
+            hdrr_cbRfdOffset,
+            hdrr_iextMax,
+            hdrr_cbExtOffset,
+        )
 
         self.data = bytes(new_data)
 
@@ -327,7 +374,7 @@ class ElfFile:
         self.data = data
         assert data[:4] == b'\x7fELF', "not an ELF file"
 
-        self.elf_header = ElfHeader(data[0:52])
+        self.elf_header = ElfHeader(data[:52])
         self.fmt = self.elf_header.fmt
 
         offset, size = self.elf_header.e_shoff, self.elf_header.e_shentsize
@@ -353,10 +400,7 @@ class ElfFile:
             s.late_init(self.sections)
 
     def find_section(self, name):
-        for s in self.sections:
-            if s.name == name:
-                return s
-        return None
+        return next((s for s in self.sections if s.name == name), None)
 
     def add_section(self, name, sh_type, sh_flags, sh_link, sh_info, sh_addralign, sh_entsize, data):
         shstr = self.sections[self.elf_header.e_shstrndx]
@@ -377,37 +421,37 @@ class ElfFile:
             self.sections.pop()
 
     def write(self, filename):
-        outfile = open(filename, 'wb')
-        outidx = 0
-        def write_out(data):
-            nonlocal outidx
-            outfile.write(data)
-            outidx += len(data)
-        def pad_out(align):
-            if align and outidx % align:
-                write_out(b'\0' * (align - outidx % align))
+        with open(filename, 'wb') as outfile:
+            outidx = 0
+            def write_out(data):
+                nonlocal outidx
+                outfile.write(data)
+                outidx += len(data)
 
-        self.elf_header.e_shnum = len(self.sections)
-        write_out(self.elf_header.to_bin())
+            def pad_out(align):
+                if align and outidx % align:
+                    write_out(b'\0' * (align - outidx % align))
 
-        for s in self.sections:
-            if s.sh_type != SHT_NOBITS and s.sh_type != SHT_NULL:
-                pad_out(s.sh_addralign)
-                old_offset = s.sh_offset
-                s.sh_offset = outidx
-                if s.sh_type == SHT_MIPS_DEBUG and s.sh_offset != old_offset:
-                    # The .mdebug section has moved, relocate offsets
-                    s.relocate_mdebug(old_offset)
-                write_out(s.data)
+            self.elf_header.e_shnum = len(self.sections)
+            write_out(self.elf_header.to_bin())
 
-        pad_out(4)
-        self.elf_header.e_shoff = outidx
-        for s in self.sections:
-            write_out(s.header_to_bin())
+            for s in self.sections:
+                if s.sh_type not in [SHT_NOBITS, SHT_NULL]:
+                    pad_out(s.sh_addralign)
+                    old_offset = s.sh_offset
+                    s.sh_offset = outidx
+                    if s.sh_type == SHT_MIPS_DEBUG and s.sh_offset != old_offset:
+                        # The .mdebug section has moved, relocate offsets
+                        s.relocate_mdebug(old_offset)
+                    write_out(s.data)
 
-        outfile.seek(0)
-        outfile.write(self.elf_header.to_bin())
-        outfile.close()
+            pad_out(4)
+            self.elf_header.e_shoff = outidx
+            for s in self.sections:
+                write_out(s.header_to_bin())
+
+            outfile.seek(0)
+            outfile.write(self.elf_header.to_bin())
 
 
 def is_temp_name(name):
@@ -417,10 +461,7 @@ def is_temp_name(name):
 # https://stackoverflow.com/a/241506
 def re_comment_replacer(match):
     s = match.group(0)
-    if s[0] in "/#":
-        return " "
-    else:
-        return s
+    return " " if s[0] in "/#" else s
 
 
 re_comment_or_string = re.compile(
@@ -457,7 +498,7 @@ class GlobalState:
 
     def make_name(self, cat):
         self.namectr += 1
-        return '_asmpp_{}{}'.format(cat, self.namectr)
+        return f'_asmpp_{cat}{self.namectr}'
 
 
 Function = namedtuple('Function', ['text_glabels', 'asm_conts', 'late_rodata_dummy_bytes', 'jtbl_rodata_size', 'late_rodata_asm_conts', 'fn_desc', 'data'])
@@ -500,15 +541,7 @@ class GlobalAsmBlock:
         while i < len(line):
             c = line[i]
             i += 1
-            if not in_quote:
-                if c == '"':
-                    in_quote = True
-                    if z and not has_comma:
-                        self.fail(".asciiz with glued strings is not supported due to GNU as version diffs")
-                    num_parts += 1
-                elif c == ',':
-                    has_comma = True
-            else:
+            if in_quote:
                 if c == '"':
                     in_quote = False
                     has_comma = False
@@ -523,7 +556,7 @@ class GlobalAsmBlock:
                 # (if c is in "bfnrtv", we have a real escaped literal)
                 if c == 'x':
                     # hex literal, consume any number of hex chars, possibly none
-                    while i < len(line) and line[i] in digits + "abcdefABCDEF":
+                    while i < len(line) and line[i] in f"{digits}abcdefABCDEF":
                         i += 1
                 elif c in digits:
                     # octal literal, consume up to two more digits
@@ -532,6 +565,13 @@ class GlobalAsmBlock:
                         i += 1
                         it += 1
 
+            elif c == ',':
+                has_comma = True
+            elif c == '"':
+                in_quote = True
+                if z and not has_comma:
+                    self.fail(".asciiz with glued strings is not supported due to GNU as version diffs")
+                num_parts += 1
         if in_quote:
             self.fail("unterminated string literal", real_line)
         if num_parts == 0:
@@ -547,9 +587,8 @@ class GlobalAsmBlock:
             self.fn_section_sizes[self.cur_section] += 1
 
     def add_sized(self, size, line):
-        if self.cur_section in ['.text', '.late_rodata']:
-            if size % 4 != 0:
-                self.fail("size must be a multiple of 4", line)
+        if self.cur_section in ['.text', '.late_rodata'] and size % 4 != 0:
+            self.fail("size must be a multiple of 4", line)
         if size < 0:
             self.fail("size cannot be negative", line)
         self.fn_section_sizes[self.cur_section] += size

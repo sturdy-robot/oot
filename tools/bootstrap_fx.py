@@ -5,11 +5,11 @@ import sys
 import re
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-data_dir = root_dir + "data/overlays/effects"
-asm_dir = root_dir + "asm/non_matchings/overlays/effects"
-src_dir = root_dir + "src/overlays/effects"
-include_dir = root_dir + "include"
+root_dir = f"{script_dir}/../"
+data_dir = f"{root_dir}data/overlays/effects"
+asm_dir = f"{root_dir}asm/non_matchings/overlays/effects"
+src_dir = f"{root_dir}src/overlays/effects"
+include_dir = f"{root_dir}include"
 indent = "    "
 
 effect_enum = [
@@ -78,19 +78,21 @@ def bootstrap(ovl_path, ovl_text):
     path_split = ovl_path.split(os.path.sep)
     z_name = path_split[-1][:-2]
     ovl_name = path_split[-2]
-    short_name = ovl_name[14:]
-    init_vars_name = ovl_name[4:] + "_InitVars"
+    init_vars_name = f"{ovl_name[4:]}_InitVars"
 
     top_comment = "/*\n * File: " + z_name + ".c" \
         "\n * Overlay: " + ovl_name + "\n * Description:\n */\n"
     header_include = "#include \"" + z_name + ".h\"\n"
+    short_name = ovl_name[14:]
     regs_enum = get_regs_enum(short_name)
 
-    with open(os.path.join(data_dir, z_name + ".data.s")) as f:
+    with open(os.path.join(data_dir, f"{z_name}.data.s")) as f:
         data_text = f.read()
 
-    pattern = re.compile("glabel " + init_vars_name +
-                         "\n.word 0x........\n\.word func_........\n")
+    pattern = re.compile(
+        f"glabel {init_vars_name}"
+        + "\n.word 0x........\n\.word func_........\n"
+    )
     init_data = pattern.search(data_text)
     if init_data is None or len(init_data.regs) == 0:
         return ""
@@ -102,7 +104,7 @@ def bootstrap(ovl_path, ovl_text):
     init_func = lines[2][6:]
 
     ovl_shortened = ovl_name.replace("ovl", "").replace("_", "")
-    init_func_name = ovl_shortened + "_Init"
+    init_func_name = f"{ovl_shortened}_Init"
 
     ovl_text = ovl_text.replace(init_func, init_func_name)
     to_rename.append((init_func, init_func_name))
@@ -113,14 +115,18 @@ def bootstrap(ovl_path, ovl_text):
         " = {\n" + indent + effect_id_name + \
         ",\n" + indent + init_func_name + ",\n};\n*/"
 
-    decs = "u32 " + init_func_name + \
-        "(PlayState* play, u32 index, EffectSs* this, void* initParamsx);\n"
-    decs += "void " + \
-        init_func_name[:-4] + \
-            "Draw(PlayState* play, u32 index, EffectSs* this);\n"
-    decs += "void " + \
-        init_func_name[:-4] + \
-            "Update(PlayState* play, u32 index, EffectSs* this);\n"
+    decs = (
+        f"u32 {init_func_name}"
+        + "(PlayState* play, u32 index, EffectSs* this, void* initParamsx);\n"
+    )
+    decs += (
+        f"void {init_func_name[:-4]}"
+        + "Draw(PlayState* play, u32 index, EffectSs* this);\n"
+    )
+    decs += (
+        f"void {init_func_name[:-4]}"
+        + "Update(PlayState* play, u32 index, EffectSs* this);\n"
+    )
 
     insert_pos = ovl_text.find("global.h>\n")
 
@@ -133,8 +139,15 @@ def get_header(header_path):
     short_name = ovl_name[14:]
     init_vars_name = "".join(ovl_name[4:].split("_")) + "InitParams"
 
-    ifndef = "#ifndef _Z_EFF_SS_" + short_name.upper() + "_H_\n" + \
-             "#define _Z_EFF_SS_" + short_name.upper() + "_H_\n\n"
+    ifndef = (
+        (
+            f"#ifndef _Z_EFF_SS_{short_name.upper()}"
+            + "_H_\n"
+            + "#define _Z_EFF_SS_"
+        )
+        + short_name.upper()
+        + "_H_\n\n"
+    )
 
     includes = "#include <ultra64.h>\n#include <global.h>\n\n"
 
@@ -184,7 +197,7 @@ def main():
                 if brace_count == 0:
                     if "dead" in file_path:
                         dog = 5
-                    header_path = file_path[:-1] + "h"
+                    header_path = f"{file_path[:-1]}h"
                     c_text = bootstrap(file_path, file_text)
                     header_text = get_header(header_path)
                     with open(file_path, "w", newline="\n") as f:

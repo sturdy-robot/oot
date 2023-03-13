@@ -65,7 +65,7 @@ def make_xml_line(offset, type):
         var_name = name_fmt.format(global_name,'Unknown',offset)
         xml_line = unknown_to_xml(var_name, offset, type)
         print('Unknown type at offset', offset)
-    replacements['06'+offset] = var_name
+    replacements[f'06{offset}'] = var_name
     return xml_line
 
 def extern_to_xml(line):
@@ -89,10 +89,7 @@ def find_type(srcdata, i):
     j = i
     while(j >= 0 and ' = {' not in srcdata[j]):
         j -= 1
-    if(j < 0):
-        return 'UNKNOWN'
-    else:
-        return srcdata[j].split(' = {')[0].split()[-2]
+    return 'UNKNOWN' if (j < 0) else srcdata[j].split(' = {')[0].split()[-2]
 
 def other_to_xml(srcdata, i):
     xml_data = ''
@@ -129,11 +126,16 @@ def create_xml(src, name):
     xml = '<Root>\n    <File Name="' + object + '" Segment="6">\n'
     symbols = {}
     for i, line in enumerate(srcdata):
-        if '0x060' in line or 'D_060' in line:
-            if 'extern' in line:
-                xml += extern_to_xml(line)
-            elif '0x060' in line:
-                xml += other_to_xml(srcdata, i)
+        if (
+            '0x060' in line
+            and 'extern' in line
+            or '0x060' not in line
+            and 'D_060' in line
+            and 'extern' in line
+        ):
+            xml += extern_to_xml(line)
+        elif '0x060' in line:
+            xml += other_to_xml(srcdata, i)
     xml += '    </File>\n</Root>\n'
     return xml
 
@@ -146,7 +148,11 @@ def add_header(src):
     for i, line in enumerate(srcdata):
         if('#include' in line):
             break
-    srcdata = srcdata[0:i+1] + ['#include "objects/' + object + '/' + object + '.h"\n'] + srcdata[i+1:]
+    srcdata = (
+        srcdata[: i + 1]
+        + [f'#include "objects/{object}/{object}' + '.h"\n']
+        + srcdata[i + 1 :]
+    )
     with open(src,'w',encoding='utf-8', newline = '\n') as outfile:
         outfile.writelines(srcdata)
     return 1
@@ -160,11 +166,11 @@ def replace_src(src):
         srcdata = srcfile.read()
     for key in list(replacements.keys()):
         srcdata = srcdata.replace(key, replacements.get(key))
-        srcdata = srcdata.replace('D_g' + global_name, 'g' + global_name)
-        if('Gfx' in replacements.get(key)):
-            srcdata = srcdata.replace('0xg' + global_name, 'g' + global_name)
+        srcdata = srcdata.replace(f'D_g{global_name}', f'g{global_name}')
+        if ('Gfx' in replacements.get(key)):
+            srcdata = srcdata.replace(f'0xg{global_name}', f'g{global_name}')
         else:
-            srcdata = srcdata.replace('0xg' + global_name, '&g' + global_name)
+            srcdata = srcdata.replace(f'0xg{global_name}', f'&g{global_name}')
     with open(src,'w',encoding='utf-8', newline = '\n') as outfile:
         outfile.write(srcdata)
     return 1
@@ -176,7 +182,7 @@ def fix_spec(src, spec):
     with open(spec, 'r') as specfile:
         specdata = specfile.readlines()
     for i, line in enumerate(specdata):
-        if ('"' + object + '"') in line:
+        if f'"{object}"' in line:
             if 'number' in specdata[i+3]:
                 old = True
             else:

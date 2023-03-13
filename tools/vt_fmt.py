@@ -38,11 +38,11 @@ def vt_fmt(text):
             i += len(code)
 
             if re_match('^4[0-7];3[0-7]$', code):
-                chars += 'VT_COL(' + COLORS[int(code[1])] + ', ' + COLORS[int(code[4])] + ')'
+                chars += f'VT_COL({COLORS[int(code[1])]}, {COLORS[int(code[4])]})'
             elif re_match('^4[0-7]$', code):
-                chars += 'VT_BGCOL(' + COLORS[int(code[1])] + ')'
+                chars += f'VT_BGCOL({COLORS[int(code[1])]})'
             elif re_match('^3[0-7]$', code):
-                chars += 'VT_FGCOL(' + COLORS[int(code[1])] + ')'
+                chars += f'VT_FGCOL({COLORS[int(code[1])]})'
             elif len(code) == 0:
                 chars += 'VT_RST'
             else:

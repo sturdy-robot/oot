@@ -25,7 +25,7 @@ def fail(msg: str) -> NoReturn:
 
 
 def static_assert_unreachable(x: NoReturn) -> NoReturn:
-    raise Exception("Unreachable! " + repr(x))
+    raise Exception(f"Unreachable! {repr(x)}")
 
 
 # ==== COMMAND-LINE ====
@@ -606,8 +606,7 @@ class Text:
         """Replacement for `pat.finditer(text)` that operates on the inner text,
         and returns the exact same matches as `Text.sub(pat, ...)`."""
         for chunk, f in self.segments:
-            for match in pat.finditer(chunk):
-                yield match
+            yield from pat.finditer(chunk)
 
     def sub(self, pat: Pattern[str], sub_fn: Callable[[Match[str]], "Text"]) -> "Text":
         result = Text()
@@ -927,9 +926,7 @@ def eval_int(expr: str, emsg: str) -> int:
 
 def eval_line_num(expr: str) -> Optional[int]:
     expr = expr.strip().replace(":", "")
-    if expr == "":
-        return None
-    return int(expr, 16)
+    return int(expr, 16) if expr else None
 
 
 def run_make(target: str, project: ProjectSettings) -> None:
@@ -1004,7 +1001,7 @@ def run_objdump(cmd: ObjdumpCommand, config: Config, project: ProjectSettings) -
             data = f.read()
         out = serialize_data_references(parse_elf_data_references(data)) + out
     else:
-        for i in range(7):
+        for _ in range(7):
             out = out[out.find("\n") + 1 :]
         out = out.rstrip("\n")
     return out
@@ -1038,14 +1035,14 @@ def search_map_file(
                     ram = int(tokens[1], 0)
                     rom = int(tokens[5], 0)
                     ram_to_rom = rom - ram
-                if line.endswith(" " + fn_name):
+                if line.endswith(f" {fn_name}"):
                     ram = int(line.split()[0], 0)
                     if cur_objfile is not None and ram_to_rom is not None:
                         cands.append((cur_objfile, ram + ram_to_rom))
                 last_line = line
         except Exception as e:
             traceback.print_exc()
-            fail(f"Internal error while parsing map file")
+            fail("Internal error while parsing map file")
 
         if len(cands) > 1:
             fail(f"Found multiple occurrences of function {fn_name} in map file.")
@@ -1164,7 +1161,7 @@ def parse_elf_data_references(data: bytes) -> List[Tuple[int, int, str]]:
 
     ret: List[Tuple[int, int, str]] = []
     for s in sections:
-        if s.sh_type == SHT_REL or s.sh_type == SHT_RELA:
+        if s.sh_type in [SHT_REL, SHT_RELA]:
             if s.sh_info == text_section:
                 # Skip .text -> .text references
                 continue
@@ -1261,7 +1258,7 @@ def dump_objfile(
     if not os.path.isfile(objfile):
         fail(f"Not able to find .o file for function: {objfile} is not a file.")
 
-    refobjfile = "expected/" + objfile
+    refobjfile = f"expected/{objfile}"
     if not os.path.isfile(refobjfile):
         fail(f'Please ensure an OK .o file exists at "{refobjfile}".')
 
@@ -1283,8 +1280,8 @@ def dump_binary(
     start_addr = maybe_eval_int(start)
     if start_addr is None:
         _, start_addr = search_map_file(start, project)
-        if start_addr is None:
-            fail("Not able to find function in map file.")
+    if start_addr is None:
+        fail("Not able to find function in map file.")
     if end is not None:
         end_addr = eval_int(end, "End address must be an integer expression.")
     else:
@@ -1334,7 +1331,7 @@ class DifferenceNormalizerAArch64(DifferenceNormalizer):
             return row
 
         row, _ = split_off_address(row)
-        return row + "<ignore>"
+        return f"{row}<ignore>"
 
     def _normalize_adrp_differences(self, mnemonic: str, row: str) -> str:
         """Identifies ADRP + LDR/ADD pairs that are used to access the GOT and
@@ -1350,7 +1347,7 @@ class DifferenceNormalizerAArch64(DifferenceNormalizer):
         if mnemonic == "adrp":
             self._adrp_pair_registers.add(row_parts[1].strip().split(",")[0])
             row, _ = split_off_address(row)
-            return row + "<ignore>"
+            return f"{row}<ignore>"
         elif mnemonic == "ldr":
             for reg in self._adrp_pair_registers:
                 # ldr xxx, [reg]
@@ -1378,10 +1375,13 @@ class ArchSettings:
     re_imm: Pattern[str]
     branch_instructions: Set[str]
     instructions_with_address_immediates: Set[str]
-    forbidden: Set[str] = field(default_factory=lambda: set(string.ascii_letters + "_"))
+    forbidden: Set[str] = field(
+        default_factory=lambda: set(f"{string.ascii_letters}_")
+    )
     arch_flags: List[str] = field(default_factory=list)
     branch_likely_instructions: Set[str] = field(default_factory=set)
     difference_normalizer: Type[DifferenceNormalizer] = DifferenceNormalizer
+
 
 
 MIPS_BRANCH_LIKELY_INSTRUCTIONS = {
@@ -1526,10 +1526,7 @@ def parse_relocated_line(line: str) -> Tuple[str, str, str]:
     before = line[: ind2 + 1]
     after = line[ind2 + 1 :]
     ind2 = after.find("(")
-    if ind2 == -1:
-        imm, after = after, ""
-    else:
-        imm, after = after[:ind2], after[ind2:]
+    imm, after = (after, "") if ind2 == -1 else (after[:ind2], after[ind2:])
     if imm == "0x0":
         imm = "0"
     return before, imm, after
@@ -1550,8 +1547,8 @@ def process_mips_reloc(row: str, prev: str, arch: ArchSettings) -> str:
             mnemonic in arch.instructions_with_address_immediates
             and not imm.startswith("0x")
         ):
-            imm = "0x" + imm
-        repl += "+" + imm if int(imm, 0) > 0 else imm
+            imm = f"0x{imm}"
+        repl += f"+{imm}" if int(imm, 0) > 0 else imm
     if "R_MIPS_LO16" in row:
         repl = f"%lo({repl})"
     elif "R_MIPS_HI16" in row:
@@ -1559,14 +1556,7 @@ def process_mips_reloc(row: str, prev: str, arch: ArchSettings) -> str:
         # correct addend for each, but objdump doesn't give us the order of
         # the relocations, so we can't find the right LO16. :(
         repl = f"%hi({repl})"
-    elif "R_MIPS_26" in row:
-        # Function calls
-        pass
-    elif "R_MIPS_PC16" in row:
-        # Branch to glabel. This gives confusing output, but there's not much
-        # we can do here.
-        pass
-    else:
+    elif "R_MIPS_26" not in row and "R_MIPS_PC16" not in row:
         assert False, f"unknown relocation type '{row}' for line '{prev}'"
     return before + repl + after
 
@@ -1591,14 +1581,8 @@ def process_ppc_reloc(row: str, prev: str) -> str:
         repl = f"{repl}@l"
     elif "R_PPC_ADDR16" in row:
         # 16-bit absolute addr
-        if "+0x7" in repl:
-            # remove the very large addends as they are an artifact of (label-_SDA(2)_BASE_)
-            # computations and are unimportant in a diff setting.
-            if int(repl.split("+")[1], 16) > 0x70000000:
-                repl = repl.split("+")[0]
-    elif "R_PPC_EMB_SDA21" in row:
-        # small data area
-        pass
+        if "+0x7" in repl and int(repl.split("+")[1], 16) > 0x70000000:
+            repl = repl.split("+")[0]
     return before + repl + after
 
 

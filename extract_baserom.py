@@ -1559,10 +1559,10 @@ def write_output_file(name, offset, size):
         with open(name, 'wb') as f:
             f.write(romData[offset:offset+size])
     except IOError:
-        print('failed to write file ' + name)
+        print(f'failed to write file {name}')
 
 def ExtractFunc(i):
-    filename = 'baserom/' + FILE_NAMES[i]
+    filename = f'baserom/{FILE_NAMES[i]}'
     entryOffset = FILE_TABLE_OFFSET + 16 * i
 
     virtStart = read_uint32_be(entryOffset + 0)
@@ -1577,10 +1577,10 @@ def ExtractFunc(i):
         compressed = True
         size = physEnd - physStart
 
-    print('extracting ' + filename + " (0x%08X, 0x%08X)" % (virtStart, virtEnd))
+    print(f'extracting {filename}' + " (0x%08X, 0x%08X)" % (virtStart, virtEnd))
     write_output_file(filename, physStart, size)
     if compressed:
-        os.system('tools/yaz0 -d ' + filename + ' ' + filename)
+        os.system(f'tools/yaz0 -d {filename} {filename}')
 
 #####################################################################
 
@@ -1595,12 +1595,12 @@ def main():
         with open(ROM_FILE_NAME, 'rb') as f:
             rom_data = f.read()
     except IOError:
-        print('failed to read file' + ROM_FILE_NAME)
+        print(f'failed to read file{ROM_FILE_NAME}')
         sys.exit(1)
 
     # extract files
     num_cores = cpu_count()
-    print("Extracting baserom with " + str(num_cores) + " CPU cores.")
+    print(f"Extracting baserom with {str(num_cores)} CPU cores.")
     with Pool(num_cores, initialize_worker, (rom_data,)) as p:
         p.map(ExtractFunc, range(len(FILE_NAMES)))
 

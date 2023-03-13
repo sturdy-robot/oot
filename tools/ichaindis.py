@@ -39,7 +39,7 @@ def get_rom_address(offset):
 def get_actor_var_names():
     in_actor = False
     actor_vars = {}
-    with open(os.path.dirname(os.path.realpath(__file__)) + "/" + Z64_ACTOR_PATH) as actor_h:
+    with open(f"{os.path.dirname(os.path.realpath(__file__))}/{Z64_ACTOR_PATH}") as actor_h:
         for line in actor_h:
             if in_actor:
                 if "}" in line:
@@ -48,9 +48,7 @@ def get_actor_var_names():
 
                 # Parse out the memory address (from the comment) and the variable name
                 regex = r'.*\/\* (.*) \*\/\s+(struct)?\s*.+\s+(.+);.*'
-                actor_var_info = re.match(regex, line)
-
-                if actor_var_info:
+                if actor_var_info := re.match(regex, line):
                     # Strip off the 0x0* part and store it
                     new_var_index = re.sub('0x0*', '', actor_var_info[1])
                     actor_vars[new_var_index] = actor_var_info[3]
@@ -76,7 +74,7 @@ def main():
         with open(args.filename, 'rb') as f:
             romData = f.read()
     except IOError:
-        print('failed to read file ' + args.filename)
+        print(f'failed to read file {args.filename}')
         sys.exit(1)
 
     print ('static InitChainEntry sInitChain[] = {')
@@ -100,7 +98,7 @@ def main():
         if args.names and var_name in actor_variable_names:
             var_name = actor_variable_names[var_name]
         else:
-            var_name = "unk_" + var_name
+            var_name = f"unk_{var_name}"
 
         print('    {0}({1}, {2}, {3}),'.format(ICHAIN_MACROS[t], var_name, value, ('ICHAIN_CONTINUE' if cont == 1 else 'ICHAIN_STOP')))
         if cont == 0:

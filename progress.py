@@ -25,7 +25,7 @@ def GetNonMatchingFunctions(files):
     return functions
 
 def ReadAllLines(fileName):
-    lineList = list()
+    lineList = []
     with open(fileName) as f:
         lineList = f.readlines()
 
@@ -35,13 +35,12 @@ def GetFiles(path, ext):
     files = []
 
     for r, d, f in os.walk(path):
-        for file in f:
-            if file.endswith(ext):
-                files.append(os.path.join(r, file))
-
+        files.extend(os.path.join(r, file) for file in f if file.endswith(ext))
     return files
 
-nonMatchingFunctions = GetNonMatchingFunctions(GetFiles("src", ".c")) if not args.matching else []
+nonMatchingFunctions = (
+    [] if args.matching else GetNonMatchingFunctions(GetFiles("src", ".c"))
+)
 
 def GetNonMatchingSize(path):
     size = 0
@@ -134,21 +133,30 @@ elif args.format == 'shield-json':
         "color": 'yellow' if srcPct < 100 else 'brightgreen',
     }))
 elif args.format == 'text':
-    adjective = "decompiled" if not args.matching else "matched"
+    adjective = "matched" if args.matching else "decompiled"
 
     print(str(total) + " total bytes of decompilable code\n")
-    print(str(src) + " bytes " + adjective + " in src " + str(srcPct) + "%\n")
-    print(str(boot) + "/" + str(bootSize) + " bytes " + adjective + " in boot " + str(bootPct) + "%\n")
-    print(str(code) + "/" + str(codeSize) + " bytes " + adjective + " in code " + str(codePct) + "%\n")
-    print(str(ovl) + "/" + str(ovlSize) + " bytes " + adjective + " in overlays " + str(ovlPct) + "%\n")
+    print(f"{str(src)} bytes {adjective} in src {str(srcPct)}" + "%\n")
+    print(
+        f"{str(boot)}/{bootSize} bytes {adjective} in boot {str(bootPct)}"
+        + "%\n"
+    )
+    print(
+        f"{str(code)}/{codeSize} bytes {adjective} in code {str(codePct)}"
+        + "%\n"
+    )
+    print(
+        f"{str(ovl)}/{ovlSize} bytes {adjective} in overlays {str(ovlPct)}"
+        + "%\n"
+    )
     print("------------------------------------\n")
 
     heartPieces = int(src / bytesPerHeartPiece)
     rupees = int(((src % bytesPerHeartPiece) * 100) / bytesPerHeartPiece)
 
     if (rupees > 0):
-        print("You have " + str(heartPieces) + "/80 heart pieces and " + str(rupees) + " rupee(s).\n")
+        print(f"You have {heartPieces}/80 heart pieces and {rupees}" + " rupee(s).\n")
     else:
-        print("You have " + str(heartPieces) + "/80 heart pieces.\n")
+        print(f"You have {heartPieces}" + "/80 heart pieces.\n")
 else:
-    print("Unknown format argument: " + args.format)
+    print(f"Unknown format argument: {args.format}")

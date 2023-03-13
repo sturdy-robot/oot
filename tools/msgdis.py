@@ -11,19 +11,18 @@ from os import path
 # ===================================================
 
 def as_hword_list(b):
-    if len(b) % 2 != 0:
-        return None
-    return [h[0] for h in struct.iter_unpack(">H", b)]
+    return None if len(b) % 2 != 0 else [h[0] for h in struct.iter_unpack(">H", b)]
 
 def as_word_list(b):
-    if len(b) % 4 != 0:
-        return None
-    return [i[0] for i in struct.iter_unpack(">I", b)]
+    return None if len(b) % 4 != 0 else [i[0] for i in struct.iter_unpack(">I", b)]
 
 def as_message_table_entry(b):
     if len(b) % 8 != 0:
         return None
-    return [(e[0], e[1]>>0x4&0xF, e[1]&0xF, e[2]) for e in [i for i in struct.iter_unpack(">HBxI", b)]]
+    return [
+        (e[0], e[1] >> 0x4 & 0xF, e[1] & 0xF, e[2])
+        for e in list(struct.iter_unpack(">HBxI", b))
+    ]
 
 def segmented_to_physical(address):
     return address & ~0x07000000
@@ -195,36 +194,39 @@ def decode(read_bytes, box_type):
                 if byte == ord(ctrl):
                     name = control_codes[ctrl]
                     # single bytes
-                    if (name == "COLOR" or name == "SHIFT" or name == "BOX_BREAK_DELAYED" or
-                        name == "FADE" or name == "ITEM_ICON" or name == "TEXT_SPEED" or
-                        name == "HIGHSCORE"):
+                    if name in [
+                        "COLOR",
+                        "SHIFT",
+                        "BOX_BREAK_DELAYED",
+                        "FADE",
+                        "ITEM_ICON",
+                        "TEXT_SPEED",
+                        "HIGHSCORE",
+                    ]:
                         buf.append("\" " + name + "(")
-                        if name == "HIGHSCORE":
-                            next_is_highscore = True
+                        if name == "BOX_BREAK_DELAYED":
+                            next_is_box_break_delayed = True
                         elif name == "COLOR":
                             next_is_color = True
-                        elif name == "BOX_BREAK_DELAYED":
-                            next_is_box_break_delayed = True
+                        elif name == "HIGHSCORE":
+                            next_is_highscore = True
                         else:
                             next_is_box_break_delayed = False
                         next_is_byte_mod = True
-                    # single halfwords
-                    elif (name == "TEXTID" or name == "FADE2" or name == "SFX"):
+                    elif name in ["TEXTID", "FADE2", "SFX"]:
                         buf.append("\" " + name + "(")
                         next_is_hword_mod = 1
-                    # multiple bytes
                     elif (name == "BACKGROUND"):
                         buf.append("\" " + name + "(")
                         next_is_background = 1
                     elif (name == "BOX_BREAK"):
                         buf.append("\"" + name + "\"")
+                    elif byte == 0x01:
+                        buf.append("\n")
+                    elif byte == 0x02:
+                        buf.append("")
                     else:
-                        if byte == 0x01: # real newlines
-                            buf.append("\n")
-                        elif byte == 0x02: # omit END ctrl code
-                            buf.append("")
-                        else:
-                            buf.append("\" " + name + " \"")
+                        buf.append("\" " + name + " \"")
                     break
             else:
                 if byte in extraction_charmap:
@@ -395,12 +397,10 @@ def extract_all_text(text_out, staff_text_out):
             outfile.write(out.strip() + "\n")
 
     if staff_text_out is not None:
-        out = ""
-        for message in dump_staff_text():
-            if message[0] == 0xFFFF:
-                continue
-
-            out += f"DEFINE_MESSAGE(0x{message[0]:04X}, {textbox_type[message[1]]}, {textbox_ypos[message[2]]},\n{message[3]}\n)\n\n"
-
+        out = "".join(
+            f"DEFINE_MESSAGE(0x{message[0]:04X}, {textbox_type[message[1]]}, {textbox_ypos[message[2]]},\n{message[3]}\n)\n\n"
+            for message in dump_staff_text()
+            if message[0] != 0xFFFF
+        )
         with open(staff_text_out, "w") as outfile:
             outfile.write(out.strip() + "\n")

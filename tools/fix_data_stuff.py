@@ -6,9 +6,9 @@ import re
 from disassemble import get_z_name
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-src_dir = root_dir + "src/overlays/"
-asm_dir = root_dir + "asm/non_matchings/overlays/"
+root_dir = f"{script_dir}/../"
+src_dir = f"{root_dir}src/overlays/"
+asm_dir = f"{root_dir}asm/non_matchings/overlays/"
 
 
 def handle_actor_line(match):
@@ -19,11 +19,13 @@ def handle_actor_line(match):
         return match
 
     ret = match
-    base_name = "build/data/overlays/" + base_portion_split[1] + "/" + base_portion_split[3]
-    data_path = base_name + ".data.o"
-    rodata_path = base_name + ".rodata.o"
-    bss_path = base_name + ".bss.o"
-    reloc_path = base_name + ".reloc.o"
+    base_name = (
+        f"build/data/overlays/{base_portion_split[1]}/{base_portion_split[3]}"
+    )
+    data_path = f"{base_name}.data.o"
+    rodata_path = f"{base_name}.rodata.o"
+    bss_path = f"{base_name}.bss.o"
+    reloc_path = f"{base_name}.reloc.o"
 
     if os.path.exists(root_dir + data_path):
         ret += "    include \"" + data_path + "\"\n"
@@ -41,12 +43,12 @@ def handle_actor_line(match):
 
 
 def main():
-    with open(root_dir + "spec") as spec_file:
+    with open(f"{root_dir}spec") as spec_file:
         spec_text = spec_file.read()
 
     spec_text_replaced = re.sub(".*ovl_.*\.o.*\n", handle_actor_line, spec_text)
 
-    with open(root_dir + "spec", "w", newline="\n") as spec_file:
+    with open(f"{root_dir}spec", "w", newline="\n") as spec_file:
         spec_file.write(spec_text_replaced)
 
 

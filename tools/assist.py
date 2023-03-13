@@ -8,9 +8,9 @@ import pickle
 import sys
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-asm_dir = root_dir + "asm/non_matchings/overlays/actors"
-build_dir = root_dir + "build/"
+root_dir = f"{script_dir}/../"
+asm_dir = f"{root_dir}asm/non_matchings/overlays/actors"
+build_dir = f"{root_dir}build/"
 
 def read_rom():
     with open("baserom.z64", "rb") as f:
@@ -107,17 +107,14 @@ def diff_syms(qb, tb):
     len_ratio = len(smaller) / len(larger)
 
     n_bytes = len(smaller)
-    matches = 0
-    for i in range(0, n_bytes, 4):
-        if smaller[i] == larger[i]:
-            matches += 4
+    matches = sum(4 for i in range(0, n_bytes, 4) if smaller[i] == larger[i])
     return (matches / n_bytes) * len_ratio
 
 
 def get_matches(query):
     query_bytes = get_symbol_bytes(map_offsets, query)
     if query_bytes is None:
-        sys.exit("Symbol '" + query + "' not found")
+        sys.exit(f"Symbol '{query}' not found")
 
     ret = {}
     for symbol in map_offsets:
@@ -135,15 +132,15 @@ def do_query(query):
     num_matches = len(matches)
 
     if num_matches == 0:
-        print(query + " - found no matches")
+        print(f"{query} - found no matches")
         return
 
     i = 0
     more_str = ":"
     if args.num_out < num_matches:
-        more_str = " (showing only " + str(args.num_out) + "):"
+        more_str = f" (showing only {str(args.num_out)}):"
 
-    print(query + " - found " + str(num_matches) + " matches total" + more_str)
+    print(f"{query} - found {num_matches} matches total{more_str}")
     for match in matches:
         if i == args.num_out:
             break
@@ -162,7 +159,7 @@ parser.add_argument("--num-out", help="number of functions to display", type=int
 args = parser.parse_args()
 
 rom_bytes = read_rom()
-map_syms = parse_map(build_dir + "z64.map")
+map_syms = parse_map(f"{build_dir}z64.map")
 map_offsets = get_map_offsets(map_syms)
 
 s_files = get_all_s_files()

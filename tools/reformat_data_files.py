@@ -6,9 +6,9 @@ import re
 from disassemble import get_z_name
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-data_dir = root_dir + "data/overlays"
-asm_dir = root_dir + "asm/non_matchings/overlays"
+root_dir = f"{script_dir}/../"
+data_dir = f"{root_dir}data/overlays"
+asm_dir = f"{root_dir}asm/non_matchings/overlays"
 
 
 def rename(old_name, new_name):
@@ -29,7 +29,7 @@ def rename_l(old_name, new_name):
             file_path = os.path.join(root, file)
             with open(file_path) as f:
                 file_text = f.read()
-            new_file_text = file_text.replace(old_name + ":", "glabel " + new_name)
+            new_file_text = file_text.replace(f"{old_name}:", f"glabel {new_name}")
             new_file_text = new_file_text.replace(old_name, new_name)
             if file_text != new_file_text:
                 with open(file_path, "w", newline="\n") as f:
@@ -40,16 +40,14 @@ def handle_jtbl(match):
     match = match.group()
     split = match.replace(":", "").split(" ")
     lbl_name = split[0]
-    new_lbl_name = "jtbl_" + lbl_name[2:]
+    new_lbl_name = f"jtbl_{lbl_name[2:]}"
     rename(lbl_name, new_lbl_name)
-    ret = "glabel " + new_lbl_name + "\n.word .L"
-    return ret
+    return f"glabel {new_lbl_name}" + "\n.word .L"
 
 
 def handle_data_line(match):
     match = match.group()
-    ret = "glabel " + match[:-1] + "\n"
-    return ret
+    return f"glabel {match[:-1]}" + "\n"
 
 
 def handle_word_l(match):
@@ -58,8 +56,7 @@ def handle_word_l(match):
     lbl_name = split[1]
     new_lbl_name = split[1][1:]
     rename_l(lbl_name, new_lbl_name)
-    ret = ".word " + new_lbl_name
-    return ret
+    return f".word {new_lbl_name}"
 
 
 def main():

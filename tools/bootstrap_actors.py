@@ -6,11 +6,11 @@ import re
 from disassemble import get_z_name
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-data_dir = root_dir + "data/overlays/actors"
-asm_dir = root_dir + "asm/non_matchings/overlays/actors"
-src_dir = root_dir + "src/overlays/actors"
-include_dir = root_dir + "include"
+root_dir = f"{script_dir}/../"
+data_dir = f"{root_dir}data/overlays/actors"
+asm_dir = f"{root_dir}asm/non_matchings/overlays/actors"
+src_dir = f"{root_dir}src/overlays/actors"
+include_dir = f"{root_dir}include"
 indent = "    "
 
 to_rename = []
@@ -25,35 +25,35 @@ with open(os.path.join(include_dir, "z64object.h")) as f:
 def get_actor_id_name(actor_id):
     matches = re.findall(actor_id + " .*\n", z64actor_text)
     if len(matches) == 0:
-        return "0x" + actor_id
+        return f"0x{actor_id}"
     match = matches[-1]
-    match = match.replace(",", "").strip().split(" ")[-1]
-    return match
+    return match.replace(",", "").strip().split(" ")[-1]
 
 
 def get_actor_type_name(actor_type):
     matches = re.findall(actor_type + " .*\n", z64actor_text)
     for m in matches:
         if "ACTORCAT" in m:
-            match = m.replace(",", "").strip().split(" ")[-1]
-            return match
-    return "0x" + actor_type
+            return m.replace(",", "").strip().split(" ")[-1]
+    return f"0x{actor_type}"
 
 
 def get_object_id_name(object_id):
     matches = re.findall(object_id + " .*\n", z64object_text)
     if len(matches) == 0:
-        return "0x" + object_id
+        return f"0x{object_id}"
     match = matches[-1]
-    match = match.replace(",", "").strip().split(" ")[-1]
-    return match
+    return match.replace(",", "").strip().split(" ")[-1]
 
 
 def create_struct(name, size):
     ret = "typedef struct\n{\n" + indent + "/* 0x0000 */ Actor actor;\n"
     leftover = int(size, 16) - int("0x14C", 16)
     if leftover > 0:
-        ret += indent + "/* 0x014C */ char unk_14C[0x" + hex(leftover).upper()[2:] + "];\n"
+        ret += (
+            f"{indent}/* 0x014C */ char unk_14C[0x{hex(leftover).upper()[2:]}"
+            + "];\n"
+        )
     ret += "} " + name + "; // size = 0x" + size + "\n"
     return ret
 
@@ -90,9 +90,9 @@ def bootstrap(ovl_path, ovl_text):
     path_split = ovl_path.split(os.path.sep)
     z_name = path_split[-1][:-2]
     ovl_name = path_split[-2]
-    init_vars_name = ovl_name[4:] + "_InitVars"
+    init_vars_name = f"{ovl_name[4:]}_InitVars"
 
-    with open(os.path.join(data_dir, z_name + ".data.s")) as f:
+    with open(os.path.join(data_dir, f"{z_name}.data.s")) as f:
         data_text = f.read()
 
     pattern = re.compile("glabel D_........\n .word 0x........, 0x........, 0x........, 0x........\n(\.word func_........\n|\.word 0x00000000\n|\.word Actor_Noop\n){4}")
@@ -110,28 +110,28 @@ def bootstrap(ovl_path, ovl_text):
     draw_func = lines[5][6:]
 
     ovl_shortened = ovl_name.replace("ovl", "").replace("_", "")
-    init_func_name = ovl_shortened + "_Init"
-    destroy_func_name = ovl_shortened + "_Destroy"
-    update_func_name = ovl_shortened + "_Update"
-    draw_func_name = ovl_shortened + "_Draw"
+    init_func_name = f"{ovl_shortened}_Init"
+    destroy_func_name = f"{ovl_shortened}_Destroy"
+    update_func_name = f"{ovl_shortened}_Update"
+    draw_func_name = f"{ovl_shortened}_Draw"
 
     to_rename.append((init_var_label, init_vars_name))
-    if init_func != "0x00000000" and init_func != "Actor_Noop":
+    if init_func not in ["0x00000000", "Actor_Noop"]:
         to_rename.append((init_func, init_func_name))
-    if destroy_func != "0x00000000" and destroy_func != "Actor_Noop":
+    if destroy_func not in ["0x00000000", "Actor_Noop"]:
         to_rename.append((destroy_func, destroy_func_name))
-    if update_func != "0x00000000" and update_func != "Actor_Noop":
+    if update_func not in ["0x00000000", "Actor_Noop"]:
         to_rename.append((update_func, update_func_name))
-    if draw_func != "0x00000000" and draw_func != "Actor_Noop":
+    if draw_func not in ["0x00000000", "Actor_Noop"]:
         to_rename.append((draw_func, draw_func_name))
 
     init_var_data = lines[1]
     init_data = init_var_data[7:53].replace("0x", "").split(", ")
-    actor_id = init_data[0][0:4]
+    actor_id = init_data[0][:4]
     actor_type = init_data[0][4:6]
     room = init_data[0][6:8]
     flags = init_data[1]
-    object_id = init_data[2][0:4]
+    object_id = init_data[2][:4]
     struct_size = init_data[3][4:8]
 
     actor_id_name = get_actor_id_name(actor_id)
@@ -142,52 +142,58 @@ def bootstrap(ovl_path, ovl_text):
 
     struct_text = create_struct(struct_name, struct_size)
 
-    defines = "#define ROOM  0x" + room + "\n#define FLAGS 0x" + flags + "\n"
+    defines = f"#define ROOM  0x{room}" + "\n#define FLAGS 0x" + flags + "\n"
 
     decs = ""
-    if init_func != "0x00000000" and init_func != "Actor_Noop":
-        decs += "void " + init_func_name + "(" + struct_name + "* this, PlayState* play);\n"
-    if destroy_func != "0x00000000" and destroy_func != "Actor_Noop":
-        decs += "void " + destroy_func_name + "(" + struct_name + "* this, PlayState* play);\n"
-    if update_func != "0x00000000" and update_func != "Actor_Noop":
-        decs += "void " + update_func_name + "(" + struct_name + "* this, PlayState* play);\n"
-    if draw_func != "0x00000000" and draw_func != "Actor_Noop":
-        decs += "void " + draw_func_name + "(" + struct_name + "* this, PlayState* play);\n"
+    if init_func not in ["0x00000000", "Actor_Noop"]:
+        decs += f"void {init_func_name}({struct_name}" + "* this, PlayState* play);\n"
+    if destroy_func not in ["0x00000000", "Actor_Noop"]:
+        decs += (
+            f"void {destroy_func_name}({struct_name}"
+            + "* this, PlayState* play);\n"
+        )
+    if update_func not in ["0x00000000", "Actor_Noop"]:
+        decs += (
+            f"void {update_func_name}({struct_name}"
+            + "* this, PlayState* play);\n"
+        )
+    if draw_func not in ["0x00000000", "Actor_Noop"]:
+        decs += f"void {draw_func_name}({struct_name}" + "* this, PlayState* play);\n"
 
-    init_vars = "ActorInit " + init_vars_name + " =\n{\n"
+    init_vars = f"ActorInit {init_vars_name}" + " =\n{\n"
     init_vars += indent + actor_id_name + ",\n"
     init_vars += indent + actor_type_name + ",\n"
     init_vars += indent + "ROOM,\n" + indent + "FLAGS,\n"
     init_vars += indent + object_id_name + ",\n"
-    init_vars += indent + "sizeof(" + struct_name + "),\n"
+    init_vars += f"{indent}sizeof({struct_name}" + "),\n"
 
     if init_func == "0x00000000":
         init_vars += indent + "NULL,\n"
     elif init_func == "Actor_Noop":
         init_vars += indent + "(ActorFunc)Actor_Noop,\n"
     else:
-        init_vars += indent + "(ActorFunc)" + init_func_name + ",\n"
+        init_vars += f"{indent}(ActorFunc){init_func_name}" + ",\n"
 
     if destroy_func == "0x00000000":
         init_vars += indent + "NULL,\n"
     elif destroy_func == "Actor_Noop":
         init_vars += indent + "(ActorFunc)Actor_Noop,\n"
     else:
-        init_vars += indent + "(ActorFunc)" + destroy_func_name + ",\n"
+        init_vars += f"{indent}(ActorFunc){destroy_func_name}" + ",\n"
 
     if update_func == "0x00000000":
         init_vars += indent + "NULL,\n"
     elif update_func == "Actor_Noop":
         init_vars += indent + "(ActorFunc)Actor_Noop,\n"
     else:
-        init_vars += indent + "(ActorFunc)" + update_func_name + ",\n"
+        init_vars += f"{indent}(ActorFunc){update_func_name}" + ",\n"
 
     if draw_func == "0x00000000":
         init_vars += indent + "NULL,\n"
     elif draw_func == "Actor_Noop":
         init_vars += indent + "(ActorFunc)Actor_Noop,\n"
     else:
-        init_vars += indent + "(ActorFunc)" + draw_func_name + ",\n"
+        init_vars += f"{indent}(ActorFunc){draw_func_name}" + ",\n"
 
     init_vars += "};\n"
 

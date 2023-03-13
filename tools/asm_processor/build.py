@@ -56,7 +56,7 @@ asmproc_flags += ["--input-enc", "utf-8", "--output-enc", "euc-jp"]
 
 with tempfile.TemporaryDirectory(prefix="asm_processor") as tmpdirname:
     tmpdir_path = Path(tmpdirname)
-    preprocessed_filename = "preprocessed_" + uuid.uuid4().hex + ".c"
+    preprocessed_filename = f"preprocessed_{uuid.uuid4().hex}.c"
     preprocessed_path = tmpdir_path / preprocessed_filename
 
     with preprocessed_path.open("wb") as f:
@@ -70,7 +70,7 @@ with tempfile.TemporaryDirectory(prefix="asm_processor") as tmpdirname:
 
         shutil.copy(
             preprocessed_path,
-            keep_output_dir / (in_file.stem + "_" + preprocessed_filename),
+            keep_output_dir / f"{in_file.stem}_{preprocessed_filename}",
         )
 
     compile_cmdline = (
@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix="asm_processor") as tmpdirname:
     try:
         subprocess.check_call(compile_cmdline)
     except subprocess.CalledProcessError as e:
-        print("Failed to compile file " + str(in_file) + ". Command line:")
+        print(f"Failed to compile file {str(in_file)}. Command line:")
         print()
         print(" ".join(shlex.quote(x) for x in compile_cmdline))
         print()
@@ -104,7 +104,7 @@ with tempfile.TemporaryDirectory(prefix="asm_processor") as tmpdirname:
     deps_file = out_file.with_suffix(".asmproc.d")
     if deps:
         with deps_file.open("w") as f:
-            f.write(str(out_file) + ": " + " \\\n    ".join(deps) + "\n")
+            f.write(f"{str(out_file)}: " + " \\\n    ".join(deps) + "\n")
             for dep in deps:
                 f.write("\n" + dep + ":\n")
     else:

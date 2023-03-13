@@ -6,10 +6,10 @@ import re
 from disassemble import get_z_name
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-asm_dir = root_dir + "asm/non_matchings/overlays/actors"
-src_dir = root_dir + "src/overlays/actors"
-include_dir = root_dir + "include"
+root_dir = f"{script_dir}/../"
+asm_dir = f"{root_dir}asm/non_matchings/overlays/actors"
+src_dir = f"{root_dir}src/overlays/actors"
+include_dir = f"{root_dir}include"
 indent = "    "
 
 includes = "#include <ultra64.h>\n#include <global.h>\n\n"
@@ -31,8 +31,8 @@ def remove_struct(root, filename):
 
 
 def handle_file(root, filename):
-    guard_name = "_" + filename[:-2].upper() + "_H_"
-    top_guard = "#ifndef " + guard_name + "\n#define " + guard_name + "\n\n"
+    guard_name = f"_{filename[:-2].upper()}_H_"
+    top_guard = f"#ifndef {guard_name}" + "\n#define " + guard_name + "\n\n"
     header_text = top_guard
     header_text += includes
 
@@ -48,11 +48,11 @@ def handle_file(root, filename):
         init_vars_name += "_"
     init_vars_name += "InitVars"
 
-    header_text += "extern ActorInit " + init_vars_name + ";\n\n"
+    header_text += f"extern ActorInit {init_vars_name}" + ";\n\n"
 
     header_text += "#endif\n"
 
-    with open(os.path.join(root, filename[:-2] + ".h"), "w", newline="\n") as f:
+    with open(os.path.join(root, f"{filename[:-2]}.h"), "w", newline="\n") as f:
         f.write(header_text)
 
 

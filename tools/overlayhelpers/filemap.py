@@ -38,20 +38,19 @@ def CreateAddrLookup(dict, recs, tracer):
     recs = sorted(recs, key=lambda x: x[0], reverse=True)
 
     for i in range(length):
-        if recs[i][0] != recs[i+1][1]:
-            if tracer != "ra" or recs[i][0] != recs[i+1][1] + 0xFFF & -0x1000:
-                print(tracer)
-                print(recs[i])
-                print(recs[i+1])
+        if recs[i][0] != recs[i + 1][1] and (
+            tracer != "ra" or recs[i][0] != recs[i + 1][1] + 0xFFF & -0x1000
+        ):
+            print(tracer)
+            print(recs[i])
+            print(recs[i+1])
     for item in recs:
         dict[item[0]] = item[2]
 
 def CreateTable():
 
-    vrecs = []
     rrecs = []
-    vrecs.append((PVA(0x80157D90), PVA(0x80800000), None))
-
+    vrecs = [(PVA(0x80157D90), PVA(0x80800000), None)]
     dict = {
         "va" : {},
         "ra" : {},

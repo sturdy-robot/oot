@@ -6,16 +6,12 @@ import sys
 import struct
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-root_dir = script_dir + "/../"
-data_dir = root_dir + "data/"
-asm_dir = root_dir + "asm/"
+root_dir = f"{script_dir}/../"
+data_dir = f"{root_dir}data/"
+asm_dir = f"{root_dir}asm/"
 
 def try_text(text_bytes):
-    bad_bytes = 0
-    for byte in text_bytes:
-        if byte < 32:
-            bad_bytes += 1
-
+    bad_bytes = sum(byte < 32 for byte in text_bytes)
     # Arbitrary string detection heuristic
     #if bad_bytes / len(text_bytes) >= 0.3:
     #    return None
@@ -34,15 +30,11 @@ def try_text(text_bytes):
 
 
 def is_zeros(stuff):
-    for piece in stuff:
-        if piece.strip() != "0x00000000":
-            return False
-    return True
+    return all(piece.strip() == "0x00000000" for piece in stuff)
 
 
 def try_float(word):
-    if (word[:3] == "0x3") or (word[:3] == "0x4") or \
-        (word[:3] == "0xB") or (word[:3] == "0xC"):
+    if word[:3] in ["0x3", "0x4", "0xB", "0xC"]:
         return struct.unpack('!f', bytes.fromhex(word[2:10]))[0]
 
 
@@ -75,7 +67,7 @@ def word_convert(byte_string):
     if len(words) == 1 or is_zeros(words[1:]):
         res = str(try_float(words[0].strip()))
         if res is not None:
-            return "    .float " + res + "\n"
+            return f"    .float {res}" + "\n"
 
     return byte_string
 
@@ -83,9 +75,7 @@ def word_convert(byte_string):
 def handle_match(match):
     in_str = match.group()[6:]
     ret = word_convert(in_str)
-    if ret == in_str:
-        return match.group()
-    return ret
+    return match.group() if ret == in_str else ret
 
 
 def process_data_file(file_path):
@@ -110,7 +100,7 @@ def main():
             if file.endswith(".s"):
                 path = os.path.join(root, file)
                 if process_data_file(path):
-                    print("Processed " + path)
+                    print(f"Processed {path}")
                     i += 1
 
 

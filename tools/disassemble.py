@@ -12,7 +12,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 
 def load_symbols():
     ret = {}
-    with open(script_dir + "/overlayhelpers/batchdisasm/symbols.txt") as f:
+    with open(f"{script_dir}/overlayhelpers/batchdisasm/symbols.txt") as f:
         symbol_text = f.readlines()
     for line in symbol_text:
         if len(line.strip()) > 0:
@@ -45,10 +45,11 @@ def get_overlays_to_disassemble():
             if ovl_name in non_disassembled_ovls:
                 non_disassembled_ovls.pop(ovl_name)
 
-    print("Found " + str(len(non_disassembled_ovls)) + " non-disassembled overlays out of " + str(len(all_overlays))
-          + " total")
+    print(
+        f"Found {len(non_disassembled_ovls)} non-disassembled overlays out of {len(all_overlays)} total"
+    )
 
-    return {k: v for k, v in sorted(non_disassembled_ovls.items(), key=lambda item: item[1])}
+    return dict(sorted(non_disassembled_ovls.items(), key=lambda item: item[1]))
 
 
 def disassemble(overlay):
@@ -56,7 +57,7 @@ def disassemble(overlay):
     args.append(overlay)
     # subprocess.run(args, cwd=atom_path, shell=True)
 
-    with open(atom_path + "/O/DBGMQ/" + overlay + ".txt") as f:
+    with open(f"{atom_path}/O/DBGMQ/{overlay}.txt") as f:
         return f.read()
 
 
@@ -69,7 +70,7 @@ def fix_symbols(assembly):
 def get_ovl_dir(overlay):
     actors_overrides = ['ovl_player_actor']
 
-    ovl_part = "/" + overlay + "/"
+    ovl_part = f"/{overlay}/"
     category = "actors"
 
     if overlay.startswith("ovl_Effect"):
@@ -88,7 +89,7 @@ def get_ovl_dir(overlay):
 
 
 def create_asm_dir(overlay, assembly):
-    asm_dir = "asm/non_matchings/overlays/" + get_ovl_dir(overlay)
+    asm_dir = f"asm/non_matchings/overlays/{get_ovl_dir(overlay)}"
     shutil.rmtree(asm_dir)
     os.mkdir(asm_dir)
     with open(asm_dir + get_z_name(overlay) + ".s", "w", newline="\n") as f:
@@ -103,16 +104,18 @@ def get_z_name(overlay):
         return "z_player"
 
     ret = overlay.lower()
-    ret = "z_" + ret[4:]
+    ret = f"z_{ret[4:]}"
     return ret
 
 
 def patch_spec(overlay):
     with open("spec", "r+", newline="\n") as f:
         spec = f.read()
-        spec = re.sub("build/baserom/" + overlay + ".o",
-                      "build/asm/overlays/" + get_ovl_dir(overlay) + get_z_name(overlay) + ".o",
-                      spec)
+        spec = re.sub(
+            f"build/baserom/{overlay}.o",
+            f"build/asm/overlays/{get_ovl_dir(overlay)}{get_z_name(overlay)}.o",
+            spec,
+        )
         f.seek(0)
         f.write(spec)
         f.truncate()
@@ -120,7 +123,7 @@ def patch_spec(overlay):
 
 def patch_overlays_asm_mk(overlay):
     with open("overlays_asm.mk", "a", newline="\n") as f:
-        f.write("    asm/overlays/" + get_ovl_dir(overlay)[:-1] + " \\\n")
+        f.write(f"    asm/overlays/{get_ovl_dir(overlay)[:-1]}" + " \\\n")
 
 
 def main():

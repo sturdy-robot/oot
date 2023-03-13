@@ -470,9 +470,15 @@ def replace_single(file):
                         pass
                     elif is_word_char(srcdata[oldEndIdx]):
                         replace = False
-                if replace and custom_behavior and custom_behavior_ignore:
-                    if srcdata[oldStartIdx + custom_behavior_ignore_offset:].startswith(custom_behavior_ignore_match):
-                        replace = False
+                if (
+                    replace
+                    and custom_behavior
+                    and custom_behavior_ignore
+                    and srcdata[
+                        oldStartIdx + custom_behavior_ignore_offset :
+                    ].startswith(custom_behavior_ignore_match)
+                ):
+                    replace = False
                 if replace:
                     srcdata = srcdata[:oldStartIdx] + new + srcdata[oldEndIdx:]
                     replaceCount += 1
